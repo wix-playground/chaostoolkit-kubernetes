@@ -13,7 +13,7 @@ from kubernetes import client, watch
 import yaml
 
 from chaosk8s import __version__, create_k8s_api_client
-from chaosk8s.pod.probes import read_pod_logs
+from chaosk8s_wix.pod.probes import read_pod_logs
 
 
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",

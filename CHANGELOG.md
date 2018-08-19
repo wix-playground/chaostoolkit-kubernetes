@@ -67,9 +67,9 @@
 
 ### Added
 
--   `chaosk8s.pod.probes.pods_in_phase` to probe that all pods matching a label
+-   `chaosk8s-wix.podpod.probes.pods_in_phase` to probe that all pods matching a label
     are in a given pod Phase
--   `chaosk8s.pod.probes.pods_not_in_phase` to probe that all pods matching a
+-   `chaosk8s-wix.podpod.probes.pods_not_in_phase` to probe that all pods matching a
     label are not in a given pod Phase
 
 ## [0.12.0][] - 2018-02-12
@@ -78,9 +78,9 @@
 
 ### Changed
 
--   Moved the `chaosk8s.probes.read_microservice_logs` to 
-    `chaosk8s.pod.probes.read_pod_logs` for clarity
--   Make name optional for `chaosk8s.pod.probes.read_pod_logs` as it usually
+-   Moved the `chaosk8s-wix.podprobes.read_microservice_logs` to 
+    `chaosk8s-wix.podpod.probes.read_pod_logs` for clarity
+-   Make name optional for `chaosk8s-wix.podpod.probes.read_pod_logs` as it usually
     more preferred to use a label for that probe
 -   Removed the system discovery as it wasn't used by chaostoolkit anyway
 

@@ -10,7 +10,7 @@ def get_version_from_package() -> str:
     """
     Read the package version from the source without importing it.
     """
-    path = os.path.join(os.path.dirname(__file__), "chaosk8s/__init__.py")
+    path = os.path.join(os.path.dirname(__file__), "chaosk8s_wix/__init__.py")
     path = os.path.normpath(os.path.abspath(path))
     with open(path) as f:
         for line in f:
@@ -19,8 +19,8 @@ def get_version_from_package() -> str:
                 version = version.replace("'", "").strip()
                 return version
 
-name = 'chaostoolkit-kubernetes'
-desc = 'Chaos Toolkit Kubernetes support'
+name = 'chaostoolkit-k8s-wix'
+desc = 'Extended version of Chaos Toolkit Kubernetes support'
 
 with io.open('README.md', encoding='utf-8') as strm:
     long_desc = strm.read()
@@ -43,9 +43,9 @@ author_email = 'contact@chaostoolkit.org'
 url = 'http://chaostoolkit.org'
 license = 'Apache License Version 2.0'
 packages = [
-    'chaosk8s',
-    'chaosk8s.node',
-    'chaosk8s.pod'
+    'chaosk8s_wix',
+    'chaosk8s_wix.node',
+    'chaosk8s_wix.pod'
 ]
 
 needs_pytest = set(['pytest', 'test']).intersection(sys.argv)

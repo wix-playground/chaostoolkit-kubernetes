@@ -6,12 +6,12 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import pytest
 
-from chaosk8s.actions import start_microservice, kill_microservice
-from chaosk8s.node.actions import cordon_node, create_node, delete_nodes, \
+from chaosk8s_wix.actions import start_microservice, kill_microservice
+from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
     uncordon_node, drain_nodes
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
 def test_cannot_process_other_than_yaml_and_json(has_conf):
     has_conf.return_value = False
     path = "./tests/fixtures/invalid-k8s.txt"
@@ -20,9 +20,9 @@ def test_cannot_process_other_than_yaml_and_json(has_conf):
     assert "cannot process {path}".format(path=path) in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_create_node(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -45,9 +45,9 @@ def test_create_node(cl, client, has_conf):
     assert res.metadata.name == "mynode"
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_create_node_may_fail(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -68,9 +68,9 @@ def test_create_node_may_fail(cl, client, has_conf):
     assert "Creating new node failed" in str(x)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_delete_nodes(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -93,9 +93,9 @@ def test_delete_nodes(cl, client, has_conf):
     v1.delete_node.assert_called_with("mynode", ANY, grace_period_seconds=None)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_delete_nodes(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -118,9 +118,9 @@ def test_delete_nodes(cl, client, has_conf):
     v1.delete_node.assert_called_with("mynode", ANY, grace_period_seconds=None)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_cordon_node_by_name(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -145,9 +145,9 @@ def test_cordon_node_by_name(cl, client, has_conf):
     v1.patch_node.assert_called_with("mynode", body)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_uncordon_node_by_name(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -172,9 +172,9 @@ def test_uncordon_node_by_name(cl, client, has_conf):
     v1.patch_node.assert_called_with("mynode", body)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_drain_nodes_by_name(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -217,9 +217,9 @@ def test_drain_nodes_by_name(cl, client, has_conf):
         "apod", "default", body=ANY)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_daemonsets_cannot_be_drained(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -253,9 +253,9 @@ def test_daemonsets_cannot_be_drained(cl, client, has_conf):
     v1.create_namespaced_pod_eviction.assert_not_called()
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_pod_with_local_volume_cannot_be_drained(cl, client, has_conf):
     has_conf.return_value = False
 
@@ -292,9 +292,9 @@ def test_pod_with_local_volume_cannot_be_drained(cl, client, has_conf):
     v1.create_namespaced_pod_eviction.assert_not_called()
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_pod_with_local_volume_cannot_be_drained_unless_forced(cl, client,
                                                                has_conf):
     has_conf.return_value = False
@@ -338,9 +338,9 @@ def test_pod_with_local_volume_cannot_be_drained_unless_forced(cl, client,
         "apod", "default", body=ANY)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.actions.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_mirror_pod_cannot_be_drained(cl, client, has_conf):
     has_conf.return_value = False
 

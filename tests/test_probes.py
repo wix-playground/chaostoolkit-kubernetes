@@ -5,19 +5,20 @@ from unittest.mock import MagicMock, patch
 import urllib3
 
 from chaoslib.exceptions import FailedActivity
-from kubernetes import client, config
+
+from kubernetes import client as k8sClient
 import pytest
 
-from chaosk8s.probes import all_microservices_healthy, \
+from chaosk8s_wix.probes import all_microservices_healthy, \
     microservice_available_and_healthy, microservice_is_not_available, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs
-from chaosk8s.node.probes import get_nodes
+from chaosk8s_wix.node.probes import get_nodes,all_nodes_are_ok
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_unhealthy_system_should_be_reported(cl, client, has_conf):
     has_conf.return_value = False
     pod = MagicMock()
@@ -35,9 +36,9 @@ def test_unhealthy_system_should_be_reported(cl, client, has_conf):
     assert "the system is unhealthy" in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_expecting_a_healthy_microservice_should_be_reported_when_not(cl,
                                                                       client,
                                                                       has_conf):
@@ -63,9 +64,9 @@ def test_expecting_a_healthy_microservice_should_be_reported_when_not(cl,
     assert "microservice 'mysvc' is not healthy" in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_expecting_microservice_is_there_when_it_should_not(cl, client, 
                                                             has_conf):
     has_conf.return_value = False
@@ -83,9 +84,9 @@ def test_expecting_microservice_is_there_when_it_should_not(cl, client,
     assert "microservice 'mysvc' is actually running" in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_expecting_service_endpoint_should_be_initialized(cl, client,
                                                           has_conf):
     has_conf.return_value = False
@@ -100,9 +101,9 @@ def test_expecting_service_endpoint_should_be_initialized(cl, client,
     assert service_endpoint_is_initialized("mysvc") is True
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_unitialized_or_not_existing_service_endpoint_should_not_be_considered_available(
     cl, client, has_conf):
     has_conf.return_value = False
@@ -119,10 +120,10 @@ def test_unitialized_or_not_existing_service_endpoint_should_not_be_considered_a
     assert "service 'mysvc' is not initialized" in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.watch', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.watch', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_deployment_is_not_fully_available(cl, client, watch, has_conf):
     has_conf.return_value = False
     deployment = MagicMock()
@@ -137,10 +138,10 @@ def test_deployment_is_not_fully_available(cl, client, watch, has_conf):
     assert deployment_is_not_fully_available("mysvc") is True
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.watch', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.watch', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_deployment_is_fully_available_when_it_should_not(cl, client,
                                                           watch, has_conf):
     has_conf.return_value = False
@@ -159,9 +160,9 @@ def test_deployment_is_fully_available_when_it_should_not(cl, client,
     assert "microservice 'mysvc' failed to stop running within" in str(excinfo)
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.pod.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.pod.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_fetch_last_logs(cl, client, has_conf):
     has_conf.return_value = False
     pod = MagicMock()
@@ -181,9 +182,9 @@ def test_fetch_last_logs(cl, client, has_conf):
     assert logs[pod.metadata.name] == "hello"
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_can_select_by_label(cl, client, has_conf):
     has_conf.return_value = False
     result = MagicMock()
@@ -200,9 +201,9 @@ def test_can_select_by_label(cl, client, has_conf):
     )
 
 
-@patch('chaosk8s.has_local_config_file', autospec=True)
-@patch('chaosk8s.node.probes.client', autospec=True)
-@patch('chaosk8s.client')
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
 def test_can_select_nodes_by_label(cl, client, has_conf):
     has_conf.return_value = False
     v1 = MagicMock()
@@ -215,3 +216,26 @@ def test_can_select_nodes_by_label(cl, client, has_conf):
     v1.list_node.assert_called_with(
         label_selector=label_selector, _preload_content=False)
     assert resp == {"hey": "there"}
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_can_select_nodes_by_label(cl, client, has_conf):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+
+    condition = k8sClient.V1NodeCondition(type="Ready", status="True")
+    status = k8sClient.V1NodeStatus(conditions=[condition])
+
+    node = k8sClient.V1Node(status=status)
+
+    response = k8sClient.V1NodeList(items=[node])
+    v1.list_node.return_value = response
+    client.CoreV1Api.return_value = v1
+
+    label_selector = 'beta.kubernetes.io/instance-type=m5.large'
+    resp = all_nodes_are_ok(label_selector=label_selector)
+    v1.list_node.assert_called_with(
+        label_selector=label_selector, _preload_content=False)
+    assert resp is True

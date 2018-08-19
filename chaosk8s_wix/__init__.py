@@ -117,9 +117,9 @@ def load_exported_activities() -> List[DiscoveredActivities]:
     Extract metadata from actions and probes exposed by this extension.
     """
     activities = []
-    activities.extend(discover_actions("chaosk8s.actions"))
-    activities.extend(discover_probes("chaosk8s.probes"))
-    activities.extend(discover_actions("chaosk8s.pod.actions"))
-    activities.extend(discover_probes("chaosk8s.pod.probes"))
-    activities.extend(discover_actions("chaosk8s.node.actions"))
+    activities.extend(discover_actions("chaosk8s_wix.actions"))
+    activities.extend(discover_probes("chaosk8s_wix.probes"))
+    activities.extend(discover_actions("chaosk8s_wix.pod.actions"))
+    activities.extend(discover_probes("chaosk8s_wix.pod.probes"))
+    activities.extend(discover_actions("chaosk8s_wix.node.actions"))
     return activities

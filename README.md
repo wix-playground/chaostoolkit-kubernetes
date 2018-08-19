@@ -1,4 +1,5 @@
-# Chaos Toolkit Kubernetes Support
+# This is extended version of Chaos Toolkit Kubernetes Support
+# Created to provide more flexibility with experiments
 
 [![Build Status](https://travis-ci.org/chaostoolkit/chaostoolkit-kubernetes.svg?branch=master)](https://travis-ci.org/chaostoolkit/chaostoolkit-kubernetes)
 [![Python versions](https://img.shields.io/pypi/pyversions/chaostoolkit-kubernetes.svg)](https://www.python.org/)
@@ -27,7 +28,7 @@ experiment file:
     "name": "all-our-microservices-should-be-healthy",
     "provider": {
         "type": "python",
-        "module": "chaosk8s.probes",
+        "module": chaosk8s-wix,
         "func": "microservice_available_and_healthy",
         "arguments": {
             "name": "myapp",
@@ -40,7 +41,7 @@ experiment file:
     "name": "terminate-db-pod",
     "provider": {
         "type": "python",
-        "module": "chaosk8s.pod.actions",
+        "module": chaosk8s-wix,
         "func": "terminate_pods",
         "arguments": {
             "label_selector": "app=my-app",
@@ -98,7 +99,7 @@ Then in your probe or action:
     "name": "all-our-microservices-should-be-healthy",
     "provider": {
         "type": "python",
-        "module": "chaosk8s.probes",
+        "module": chaosk8s_wix,
         "func": "microservice_available_and_healthy",
         "secrets": ["kubernetes"],
         "arguments": {
