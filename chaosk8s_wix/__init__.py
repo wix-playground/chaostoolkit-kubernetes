@@ -14,7 +14,7 @@ from logzero import logger
 
 
 __all__ = ["create_k8s_api_client", "discover", "__version__"]
-__version__ = '1.0.2'
+__version__ = '1.0.4'
 
 
 def has_local_config_file():
