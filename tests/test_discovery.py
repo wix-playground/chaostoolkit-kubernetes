@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from chaosk8s import __version__, discover
+from chaosk8s_wix  import __version__, discover
 
 
 def test_discover_extension_capabilities():

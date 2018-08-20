@@ -3,7 +3,7 @@ import json
 from chaoslib.types import Configuration, Secrets
 from kubernetes import client
 
-from chaosk8s import create_k8s_api_client
+from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["get_nodes", "all_nodes_are_ok"]
 

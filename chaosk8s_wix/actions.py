@@ -10,7 +10,7 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 import yaml
 
-from chaosk8s import create_k8s_api_client
+from chaosk8s_wix import create_k8s_api_client
 
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
