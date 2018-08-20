@@ -5,7 +5,7 @@ from kubernetes import client
 
 from chaosk8s import create_k8s_api_client
 
-__all__ = ["get_nodes","all_nodes_are_ok"]
+__all__ = ["get_nodes", "all_nodes_are_ok"]
 
 
 def get_nodes(label_selector: str = None, configuration: Configuration = None,
@@ -25,8 +25,9 @@ def get_nodes(label_selector: str = None, configuration: Configuration = None,
 
     return json.loads(ret.read().decode('utf-8'))
 
-def all_nodes_are_ok(label_selector: str = None, configuration: Configuration = None,
-              secrets: Secrets = None):
+
+def all_nodes_are_ok(label_selector: str = None,
+                     secrets: Secrets = None):
     """
     List all Kubernetes worker nodes in your cluster. You may filter nodes
     by specifying a label selector.
@@ -41,7 +42,6 @@ def all_nodes_are_ok(label_selector: str = None, configuration: Configuration = 
     else:
         ret = v1.list_node(_preload_content=False)
 
-
     items_in_list = ret.items
     for item in items_in_list:
         for condition in item.status.conditions:
@@ -50,4 +50,3 @@ def all_nodes_are_ok(label_selector: str = None, configuration: Configuration = 
                 break
 
     return retval
-
