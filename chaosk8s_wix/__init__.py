@@ -101,10 +101,10 @@ def discover(discover_system: bool = True) -> Discovery:
     """
     Discover Kubernetes capabilities offered by this extension.
     """
-    logger.info("Discovering capabilities from chaostoolkit-kubernetes")
+    logger.info("Discovering capabilities from chaostoolkit-k8s-wix")
 
     discovery = initialize_discovery_result(
-        "chaostoolkit-kubernetes", __version__, "kubernetes")
+        "chaostoolkit-k8s-wix", __version__, "kubernetes")
     discovery["activities"].extend(load_exported_activities())
     return discovery
 
@@ -122,4 +122,5 @@ def load_exported_activities() -> List[DiscoveredActivities]:
     activities.extend(discover_actions("chaosk8s_wix.pod.actions"))
     activities.extend(discover_probes("chaosk8s_wix.pod.probes"))
     activities.extend(discover_actions("chaosk8s_wix.node.actions"))
+    activities.extend(discover_actions("chaosk8s_wix.node.probes"))
     return activities
