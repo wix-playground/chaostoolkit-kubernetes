@@ -9,7 +9,7 @@ import dateparser
 from logzero import logger
 from kubernetes import client, watch
 
-from chaosk8s import create_k8s_api_client
+from chaosk8s_wix import create_k8s_api_client
 from chaoslib.exceptions import FailedActivity
 
 
