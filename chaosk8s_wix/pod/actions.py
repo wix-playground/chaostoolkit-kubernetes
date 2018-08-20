@@ -10,7 +10,7 @@ from chaoslib.types import Secrets
 from kubernetes import client
 from logzero import logger
 
-from chaosk8s import create_k8s_api_client
+from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["terminate_pods"]
 
