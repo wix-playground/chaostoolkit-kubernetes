@@ -2,6 +2,7 @@
 import json
 from chaoslib.types import Configuration, Secrets
 from kubernetes import client
+from pprint import pprint
 
 from chaosk8s_wix import create_k8s_api_client
 
@@ -41,7 +42,7 @@ def all_nodes_are_ok(label_selector: str = None,
                                           _preload_content=False)
     else:
         ret = v1.list_node_with_http_info(_preload_content=False)
-
+    pprint(ret, indent=2)
     items_in_list = ret.items
     for item in items_in_list:
         for condition in item.status.conditions:
