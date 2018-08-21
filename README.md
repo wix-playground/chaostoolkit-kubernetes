@@ -1,11 +1,8 @@
 # This is extended version of Chaos Toolkit Kubernetes Support
 # Created to provide more flexibility with experiments
 
-[![Build Status](https://travis-ci.org/chaostoolkit/chaostoolkit-kubernetes.svg?branch=master)](https://travis-ci.org/chaostoolkit/chaostoolkit-kubernetes)
-[![Python versions](https://img.shields.io/pypi/pyversions/chaostoolkit-kubernetes.svg)](https://www.python.org/)
-
 This project contains activities, such as probes and actions, you can call from
-your experiment through the Chaos Toolkit.
+your experiment through the [Chaos Toolkit][chaostoolkit].
 
 ## Install
 
@@ -15,7 +12,7 @@ environment where [chaostoolkit][] already lives.
 [chaostoolkit]: https://github.com/chaostoolkit/chaostoolkit
 
 ```
-$ pip install chaostoolkit-kubernetes
+$ pip install chaostoolkit-k8s-wix
 ```
 
 ## Usage
@@ -28,7 +25,7 @@ experiment file:
     "name": "all-our-microservices-should-be-healthy",
     "provider": {
         "type": "python",
-        "module": chaosk8s-wix,
+        "module": chaosk8s_wix,
         "func": "microservice_available_and_healthy",
         "arguments": {
             "name": "myapp",
@@ -41,7 +38,7 @@ experiment file:
     "name": "terminate-db-pod",
     "provider": {
         "type": "python",
-        "module": chaosk8s-wix,
+        "module": chaosk8s_wix,
         "func": "terminate_pods",
         "arguments": {
             "label_selector": "app=my-app",
@@ -65,7 +62,7 @@ Please explore the code to see existing probes and actions.
 You may use the Chaos Toolkit to discover the capabilities of this extension:
 
 ```
-$ chaos discover chaostoolkit-kubernetes --no-install
+$ chaos discover chaostoolkit-k8s-wix --no-install
 ```
 
 ## Configuration
@@ -150,3 +147,33 @@ into the master branch of the repository. Please, make sure you can abide by
 the rules of the DCO before submitting a PR.
 
 [dco]: https://github.com/probot/dco#how-it-works
+
+
+### Develop
+
+If you wish to develop on this project, make sure to install the development
+dependencies. But first, [create a virtual environment][venv] and then install
+those dependencies.
+
+[venv]: http://chaostoolkit.org/reference/usage/install/#create-a-virtual-environment
+
+```console
+$ pip install -r requirements-dev.txt -r requirements.txt 
+```
+
+Then, point your environment to this directory:
+
+```console
+$ python setup.py develop
+```
+
+Now, you can edit the files and they will be automatically be seen by your
+environment, even when running from the `chaos` command locally.
+
+### Test
+
+To run the tests for the project execute the following:
+
+```
+$ pytest
+```
