@@ -37,10 +37,10 @@ def all_nodes_are_ok(label_selector: str = None,
 
     v1 = client.CoreV1Api(api)
     if label_selector:
-        ret = v1.list_node(
-            label_selector=label_selector, _preload_content=False)
+        ret = v1.list_node_with_http_info(label_selector=label_selector,
+                                          _preload_content=False)
     else:
-        ret = v1.list_node(_preload_content=False)
+        ret = v1.list_node_with_http_info(_preload_content=False)
 
     items_in_list = ret.items
     for item in items_in_list:

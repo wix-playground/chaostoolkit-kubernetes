@@ -13,7 +13,7 @@ from chaosk8s_wix.probes import all_microservices_healthy, \
     microservice_available_and_healthy, microservice_is_not_available, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs
-from chaosk8s_wix.node.probes import get_nodes,all_nodes_are_ok
+from chaosk8s_wix.node.probes import get_nodes, all_nodes_are_ok
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -220,10 +220,9 @@ def test_can_select_nodes_by_label(cl, client, has_conf):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.probes.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_can_select_nodes_by_label(cl, client, has_conf):
+def test_all_nodes_are_ok(cl, client, has_conf):
     has_conf.return_value = False
     v1 = MagicMock()
-
 
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
@@ -231,11 +230,11 @@ def test_can_select_nodes_by_label(cl, client, has_conf):
     node = k8sClient.V1Node(status=status)
 
     response = k8sClient.V1NodeList(items=[node])
-    v1.list_node.return_value = response
+    v1.list_node_with_http_info.return_value = response
     client.CoreV1Api.return_value = v1
 
     label_selector = 'beta.kubernetes.io/instance-type=m5.large'
     resp = all_nodes_are_ok(label_selector=label_selector)
-    v1.list_node.assert_called_with(
+    v1.list_node_with_http_info.assert_called_with(
         label_selector=label_selector, _preload_content=False)
     assert resp is True
