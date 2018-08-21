@@ -110,3 +110,7 @@ docs/site/
 junit-test-results.xml
 
 .DS_Store
+discovery.json
+experiment.json
+journal.json
+.pytest_cache
