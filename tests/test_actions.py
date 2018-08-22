@@ -9,7 +9,7 @@ import pytest
 
 from chaosk8s_wix.actions import start_microservice, kill_microservice
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
-    uncordon_node, drain_nodes,remove_label_from_node,taint_node
+    uncordon_node, drain_nodes,remove_label_from_node, taint_node, add_label_to_node
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -407,6 +407,34 @@ def test_remove_label_from_node(cl, client, has_conf):
     v1.patch_node.assert_called_with(
         fake_node_name, {'metadata': {'labels': {'label1': None}}})
 
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_add_label_to_node(cl, client, has_conf):
+    fake_node_name = "fake_node.com"
+
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    condition = k8sClient.V1NodeCondition(type="Ready", status="True")
+    status = k8sClient.V1NodeStatus(conditions=[condition])
+    spec = k8sClient.V1NodeSpec(unschedulable=False)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    response = k8sClient.V1NodeList(items=[node])
+
+    v1.list_node_with_http_info.return_value = response
+    v1.patch_node.return_value = node
+    client.CoreV1Api.return_value = v1
+
+    label_selector = 'label_default=true'
+
+    add_label_to_node(label_selector=label_selector, label_name="label1", label_value="value1")
+
+    v1.list_node_with_http_info.assert_called_with(
+        label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
+    v1.patch_node.assert_called_with(
+        fake_node_name, {'metadata': {'labels': {'label1': "value1"}}})
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.actions.client', autospec=True)
@@ -431,7 +459,7 @@ def test_taint_node(cl, client, has_conf):
     label_selector = 'label_default=true, label1=True'
 
     taint_node(label_selector=label_selector, key="key1", value="Apps",  effect="NoExec")
- 
+
     v1.list_node_with_http_info.assert_called_with(
         label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
     v1.patch_node.assert_called_with(

@@ -19,7 +19,7 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
-           "uncordon_node", "remove_label_from_node", "taint_node"]
+           "uncordon_node", "remove_label_from_node", "taint_node", "add_label_to_node"]
 
 
 def delete_nodes(label_selector: str = None, all: bool = False,
@@ -341,7 +341,7 @@ def drain_nodes(name: str = None, label_selector: str = None,
         return True
 
 
-def label_random_node(label_selector: str = None,
+def add_label_to_node(label_selector: str = None,
                       label_name: str = "under_chaos_test",
                       label_value: str = "True",
                       secrets: Secrets = None) -> bool:
