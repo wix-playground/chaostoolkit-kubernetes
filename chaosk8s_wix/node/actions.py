@@ -19,7 +19,7 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
-           "uncordon_node"]
+           "uncordon_node", "remove_label_from_node", "taint_node"]
 
 
 def delete_nodes(label_selector: str = None, all: bool = False,
@@ -339,3 +339,127 @@ def drain_nodes(name: str = None, label_selector: str = None,
             time.sleep(10)
 
         return True
+
+
+def label_random_node(label_selector: str = None,
+                      label_name: str = "under_chaos_test",
+                      label_value: str = "True",
+                      secrets: Secrets = None) -> bool:
+    """
+    label nodes. Later we will use label to perform actual experiments on node
+
+    """
+
+    body = {
+        "metadata": {
+            "labels": {
+                label_name: label_value
+            }
+        }
+    }
+
+    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+    for node in items:
+        try:
+            k8s_pai_v1.patch_node(node.metadata.name, body)
+        except ApiException as x:
+            raise FailedActivity("Creating new node failed: {}".format(x.body))
+    return True
+
+
+def remove_label_from_node(label_selector: str = None,
+                           label_name: str = "under_chaos_test",
+                           secrets: Secrets = None) -> bool:
+    """
+    remove laebls from nodes.ususally in rollback
+
+    """
+
+    body = {
+        "metadata": {
+            "labels": {
+                label_name: None
+            }
+        }
+    }
+
+    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+    for node in items:
+        try:
+            k8s_pai_v1.patch_node(node.metadata.name, body)
+        except ApiException as x:
+            raise FailedActivity("Creating new node failed: {}".format(x.body))
+    return True
+
+
+def get_node_list(label_selector, secrets):
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+    if label_selector:
+        ret = v1.list_node_with_http_info(label_selector=label_selector,
+                                          _preload_content=True,
+                                          _return_http_data_only=True)
+    else:
+        ret = v1.list_node_with_http_info(_preload_content=True,
+                                          _return_http_data_only=True)
+    return ret.items, v1
+
+
+def remove_taint_from_node(label_selector: str = None,
+                           key: str = None,
+                           secrets: Secrets = None) -> bool:
+    """
+    remove taint from nodes by label.As rollback
+
+    """
+
+    body = {
+        "spec": {
+            "taints": [
+                {
+                    "effect": None,
+                    "key": key,
+                    "value": None
+                }
+            ]
+        }
+    }
+
+    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+
+    for node in items:
+        try:
+            k8s_pai_v1.patch_node(node.metadata.name, body)
+        except ApiException as x:
+            raise FailedActivity("Un tainting node failed: {}".format(x.body))
+    return True
+
+
+def taint_node(label_selector: str = None,
+               key: str = None, value: str = None, effect: str = None,
+               secrets: Secrets = None) -> bool:
+    """
+    taint nodes by label. It allows gracefull shutdown
+
+    """
+
+    body = {
+        "spec": {
+            "taints": [
+                {
+                    "effect": effect,
+                    "key": key,
+                    "value": value
+                }
+            ]
+        }
+    }
+
+    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+
+    for node in items:
+        try:
+            k8s_pai_v1.patch_node(node.metadata.name, body)
+        except ApiException as x:
+            raise FailedActivity("tainting node failed: {}".format(x.body))
+    return True

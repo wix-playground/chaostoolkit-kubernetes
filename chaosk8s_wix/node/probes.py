@@ -6,6 +6,7 @@ from pprint import pprint
 
 from chaosk8s_wix import create_k8s_api_client
 
+
 __all__ = ["get_nodes", "all_nodes_are_ok"]
 
 
@@ -34,20 +35,24 @@ def all_nodes_are_ok(label_selector: str = None,
     by specifying a label selector.
     """
     retval = True
-    api = create_k8s_api_client(secrets)
 
+    api = create_k8s_api_client(secrets)
     v1 = client.CoreV1Api(api)
     if label_selector:
         ret = v1.list_node_with_http_info(label_selector=label_selector,
-                                          _preload_content=False)
+                                          _preload_content=True, 
+                                          _return_http_data_only=True)
     else:
-        ret = v1.list_node_with_http_info(_preload_content=False)
-    pprint(ret, indent=2)
+        ret = v1.list_node_with_http_info(_preload_content=True, 
+                                          _return_http_data_only=True)
     items_in_list = ret.items
     for item in items_in_list:
         for condition in item.status.conditions:
             if condition.type == "Ready" and condition.status == "False":
                 retval = False
                 break
+        if item.spec.unschedulable:
+            retval = False
+            break
 
     return retval

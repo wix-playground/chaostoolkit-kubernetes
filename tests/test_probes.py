@@ -217,6 +217,7 @@ def test_can_select_nodes_by_label(cl, client, has_conf):
         label_selector=label_selector, _preload_content=False)
     assert resp == {"hey": "there"}
 
+
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.probes.client', autospec=True)
 @patch('chaosk8s_wix.client')
@@ -226,8 +227,8 @@ def test_all_nodes_are_ok(cl, client, has_conf):
 
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
-
-    node = k8sClient.V1Node(status=status)
+    spec = k8sClient.V1NodeSpec(unschedulable=False)
+    node = k8sClient.V1Node(status=status, spec=spec)
 
     response = k8sClient.V1NodeList(items=[node])
     v1.list_node_with_http_info.return_value = response
@@ -236,5 +237,5 @@ def test_all_nodes_are_ok(cl, client, has_conf):
     label_selector = 'beta.kubernetes.io/instance-type=m5.large'
     resp = all_nodes_are_ok(label_selector=label_selector)
     v1.list_node_with_http_info.assert_called_with(
-        label_selector=label_selector, _preload_content=False)
+        label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
     assert resp is True

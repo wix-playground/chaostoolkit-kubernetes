@@ -2,13 +2,16 @@
 from unittest.mock import ANY, MagicMock, patch
 
 from chaoslib.exceptions import FailedActivity
-from kubernetes import client, config
+from kubernetes import client as k8sClient
+from kubernetes import config
 from kubernetes.client.rest import ApiException
 import pytest
 
 from chaosk8s_wix.actions import start_microservice, kill_microservice
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
     uncordon_node, drain_nodes
+from chaosk8s_wix.node.actions import remove_label_from_node
+from chaosk8s_wix.node.actions import taint_node
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -375,3 +378,63 @@ def test_mirror_pod_cannot_be_drained(cl, client, has_conf):
 
     v1.read_namespaced_pod.assert_not_called()
     v1.create_namespaced_pod_eviction.assert_not_called()
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_remove_label_from_node(cl, client, has_conf):
+    fake_node_name = "fake_node.com"
+
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    condition = k8sClient.V1NodeCondition(type="Ready", status="True")
+    status = k8sClient.V1NodeStatus(conditions=[condition])
+    spec = k8sClient.V1NodeSpec(unschedulable=False)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    response = k8sClient.V1NodeList(items=[node])
+
+    v1.list_node_with_http_info.return_value = response
+    v1.patch_node.return_value = node
+    client.CoreV1Api.return_value = v1
+
+    label_selector = 'label_default=true, label1=True'
+
+    remove_label_from_node(label_selector, "label1")
+
+    v1.list_node_with_http_info.assert_called_with(
+        label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
+    v1.patch_node.assert_called_with(
+        fake_node_name, {'metadata': {'labels': {'label1': None}}})
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_taint_node(cl, client, has_conf):
+    fake_node_name = "fake_node.com"
+
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    condition = k8sClient.V1NodeCondition(type="Ready", status="True")
+    status = k8sClient.V1NodeStatus(conditions=[condition])
+    spec = k8sClient.V1NodeSpec(unschedulable=False)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    response = k8sClient.V1NodeList(items=[node])
+
+    v1.list_node_with_http_info.return_value = response
+    v1.patch_node.return_value = node
+    client.CoreV1Api.return_value = v1
+
+    label_selector = 'label_default=true, label1=True'
+
+    taint_node(label_selector=label_selector, key="key1", value="Apps",  effect="NoExec")
+
+    v1.list_node_with_http_info.assert_called_with(
+        label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
+    v1.patch_node.assert_called_with(
+        fake_node_name,  {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'value': 'Apps'}]}})
