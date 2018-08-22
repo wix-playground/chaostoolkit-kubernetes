@@ -407,6 +407,7 @@ def test_remove_label_from_node(cl, client, has_conf):
     v1.patch_node.assert_called_with(
         fake_node_name, {'metadata': {'labels': {'label1': None}}})
 
+
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')

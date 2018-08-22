@@ -19,7 +19,8 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
-           "uncordon_node", "remove_label_from_node", "taint_node", "add_label_to_node"]
+           "uncordon_node", "remove_label_from_node", "taint_node",
+           "add_label_to_node","label_random_node"]
 
 
 def delete_nodes(label_selector: str = None, all: bool = False,
@@ -462,4 +463,32 @@ def taint_node(label_selector: str = None,
             k8s_pai_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("tainting node failed: {}".format(x.body))
+    return True
+
+
+def label_random_node(label_selector: str = None,
+                      label_name: str = "under_chaos_test",
+                      label_value: str = "True",
+                      secrets: Secrets = None) -> bool:
+    """
+    label nodes. Later we will use label to perform actual experiments on node
+
+    """
+
+    body = {
+        "metadata": {
+            "labels": {
+                label_name: label_value
+            }
+        }
+    }
+
+    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+    node_index = randint(0, len(items) - 1)
+    node = items[node_index]
+
+    try:
+        k8s_pai_v1.patch_node(node.metadata.name, body)
+    except ApiException as x:
+        raise FailedActivity("Creating new node failed: {}".format(x.body))
     return True
