@@ -114,3 +114,4 @@ discovery.json
 experiment.json
 journal.json
 .pytest_cache
+examples
