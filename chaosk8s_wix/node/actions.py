@@ -15,12 +15,13 @@ from chaoslib.types import Secrets
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from logzero import logger
+from random import randint
 
 from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
-           "uncordon_node", "remove_label_from_node", "taint_node",
-           "add_label_to_node","label_random_node"]
+           "uncordon_node", "remove_label_from_node", "taint_nodes_by_label",
+           "add_label_to_node", "label_random_node"]
 
 
 def delete_nodes(label_selector: str = None, all: bool = False,
@@ -407,7 +408,6 @@ def get_node_list(label_selector, secrets):
 
 
 def remove_taint_from_node(label_selector: str = None,
-                           key: str = None,
                            secrets: Secrets = None) -> bool:
     """
     remove taint from nodes by label.As rollback
@@ -417,11 +417,7 @@ def remove_taint_from_node(label_selector: str = None,
     body = {
         "spec": {
             "taints": [
-                {
-                    "effect": None,
-                    "key": key,
-                    "value": None
-                }
+
             ]
         }
     }
@@ -436,7 +432,7 @@ def remove_taint_from_node(label_selector: str = None,
     return True
 
 
-def taint_node(label_selector: str = None,
+def taint_nodes_by_label(label_selector: str = None,
                key: str = None, value: str = None, effect: str = None,
                secrets: Secrets = None) -> bool:
     """
@@ -456,11 +452,11 @@ def taint_node(label_selector: str = None,
         }
     }
 
-    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+    items, k8s_api_v1 = get_node_list(label_selector, secrets)
 
     for node in items:
         try:
-            k8s_pai_v1.patch_node(node.metadata.name, body)
+            k8s_api_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("tainting node failed: {}".format(x.body))
     return True
@@ -486,7 +482,8 @@ def label_random_node(label_selector: str = None,
     items, k8s_pai_v1 = get_node_list(label_selector, secrets)
     node_index = randint(0, len(items) - 1)
     node = items[node_index]
-
+    logger.debug("Picked node '{p}' to be labeled for tests".format(
+        p=node.metadata.name))
     try:
         k8s_pai_v1.patch_node(node.metadata.name, body)
     except ApiException as x:

@@ -2,8 +2,8 @@
 import json
 from chaoslib.types import Configuration, Secrets
 from kubernetes import client
-from pprint import pprint
 
+from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 
@@ -27,6 +27,21 @@ def get_nodes(label_selector: str = None, configuration: Configuration = None,
 
     return json.loads(ret.read().decode('utf-8'))
 
+def check_containers_for_node(client , nodename):
+    pods = client.list_pod_for_all_namespaces(watch=False, field_selector="spec.nodeName=" + nodename)
+    retval = True
+    for i in pods.items:
+        if i.status.container_statuses is not None:
+            for status in i.status.container_statuses:
+                if status.state.running is None:
+                    logger.info("%s\t%s\t%s \t%s is not good" % (
+                        nodename, i.metadata.namespace, i.metadata.name, i.status.container_statuses[0].state))
+                    retval = False
+    if not retval :
+        logger.error("%s\tis NOT OK" % nodename)
+    else:
+        logger.info("%s\tis OK" % nodename)
+    return retval
 
 def all_nodes_are_ok(label_selector: str = None,
                      secrets: Secrets = None):
@@ -47,12 +62,26 @@ def all_nodes_are_ok(label_selector: str = None,
                                           _return_http_data_only=True)
     items_in_list = ret.items
     for item in items_in_list:
+        localresult = True
         for condition in item.status.conditions:
             if condition.type == "Ready" and condition.status == "False":
-                retval = False
-                break
+                logger.debug("{p} Ready=False  ".format(
+                    p=item.metadata.name))
+                localresult = False
         if item.spec.unschedulable:
-            retval = False
-            break
+            logger.debug("{p} unschedulable ' ".format(
+                p=item.metadata.name))
+            localresult = False
+        if item.spec.taints and len(item.spec.taints) > 0:
+            logger.debug("{p} Tainted node ' ".format(
+                p=item.metadata.name))
+            localresult = False
+
+        if not localresult:
+            logger.debug("{p} Is not healthy ' ".format(
+                         p=item.metadata.name))
+        if localresult is False:
+            retval = localresult
 
     return retval
+

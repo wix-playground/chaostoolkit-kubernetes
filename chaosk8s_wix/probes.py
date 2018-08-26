@@ -18,7 +18,7 @@ from chaosk8s_wix.pod.probes import read_pod_logs
 
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
-           "deployment_is_not_fully_available", "read_microservices_logs"]
+           "deployment_is_not_fully_available", "read_microservices_logs", "all_pods_in_all_ns_are_ok"]
 
 
 def all_microservices_healthy(ns: str = "default",
@@ -185,6 +185,26 @@ def deployment_is_not_fully_available(name: str, ns: str = "default",
         raise FailedActivity(
             "microservice '{name}' failed to stop running within {t}s".format(
                 name=name, t=timeout))
+
+
+def all_pods_in_all_ns_are_ok(ns_ignore_list: []=None, secrets: Secrets = None):
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+    pods = v1.list_pod_for_all_namespaces(watch=False)
+    retval = True
+    for i in pods.items:
+        if i.status.container_statuses is not None:
+            for status in i.status.container_statuses:
+                if status.state.running is None:
+                    if i.metadata.namespace not in ns_ignore_list:
+                        logger.info("%s\t%s\t%s \t%s is not good" % (
+                            i.status.host_ip, i.metadata.namespace, i.metadata.name, i.status.container_statuses[0].state))
+                        retval = False
+                    else:
+                        logger.info("%s\t%s\t%s \t%s is not good but IGNORED by back list" % (
+                            i.status.host_ip, i.metadata.namespace, i.metadata.name, i.status.container_statuses[0].state))
+    return retval
+
 
 
 # moved to pod/probes.py
