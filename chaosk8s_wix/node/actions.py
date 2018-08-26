@@ -433,8 +433,8 @@ def remove_taint_from_node(label_selector: str = None,
 
 
 def taint_nodes_by_label(label_selector: str = None,
-               key: str = None, value: str = None, effect: str = None,
-               secrets: Secrets = None) -> bool:
+                         key: str = None, value: str = None, effect: str = None,
+                         secrets: Secrets = None) -> bool:
     """
     taint nodes by label. It allows gracefull shutdown
 

@@ -3,7 +3,7 @@ set -eo pipefail
 
 function lint () {
     echo "Checking the code syntax"
-    pycodestyle --first chaosk8s_wix
+    pycodestyle --first  --max-line-length=120 chaosk8s_wix
 }
 
 function build () {

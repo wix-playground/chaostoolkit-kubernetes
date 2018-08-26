@@ -27,7 +27,13 @@ def get_nodes(label_selector: str = None, configuration: Configuration = None,
 
     return json.loads(ret.read().decode('utf-8'))
 
-def check_containers_for_node(client , nodename):
+
+def check_containers_for_node(client, nodename):
+    """
+       Helper function.
+       Checks that all pods on specific container are in running state
+
+    """
     pods = client.list_pod_for_all_namespaces(watch=False, field_selector="spec.nodeName=" + nodename)
     retval = True
     for i in pods.items:
@@ -37,11 +43,12 @@ def check_containers_for_node(client , nodename):
                     logger.info("%s\t%s\t%s \t%s is not good" % (
                         nodename, i.metadata.namespace, i.metadata.name, i.status.container_statuses[0].state))
                     retval = False
-    if not retval :
+    if not retval:
         logger.error("%s\tis NOT OK" % nodename)
     else:
         logger.info("%s\tis OK" % nodename)
     return retval
+
 
 def all_nodes_are_ok(label_selector: str = None,
                      secrets: Secrets = None):
@@ -84,4 +91,3 @@ def all_nodes_are_ok(label_selector: str = None,
             retval = localresult
 
     return retval
-
