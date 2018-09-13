@@ -19,7 +19,7 @@ from chaosk8s_wix.pod.probes import read_pod_logs
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok"]
+           "all_pods_in_all_ns_are_ok","get_nodes_for_chaos_test"]
 
 
 def all_microservices_healthy(ns: str = "default",
