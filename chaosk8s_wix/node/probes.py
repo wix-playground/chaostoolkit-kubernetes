@@ -7,10 +7,10 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 
-__all__ = ["get_nodes", "all_nodes_are_ok"]
+__all__ = ["get_nodes", "all_nodes_are_ok","get_nodes_for_chaos_test"]
 
 
-def get_nodes(label_selector: str = None, configuration: Configuration = None,
+def get_nodes(label_selector: str = None,
               secrets: Secrets = None):
     """
     List all Kubernetes worker nodes in your cluster. You may filter nodes
@@ -49,8 +49,8 @@ def check_containers_for_node(client, nodename):
         logger.info("%s\tis OK" % nodename)
     return retval
 
-
 def all_nodes_are_ok(label_selector: str = None,
+                     configuration: Configuration = None,
                      secrets: Secrets = None):
     """
     List all Kubernetes worker nodes in your cluster. You may filter nodes
@@ -79,6 +79,7 @@ def all_nodes_are_ok(label_selector: str = None,
             logger.debug("{p} unschedulable ' ".format(
                 p=item.metadata.name))
             localresult = False
+
         if item.spec.taints and len(item.spec.taints) > 0:
             logger.debug("{p} Tainted node ' ".format(
                 p=item.metadata.name))
@@ -91,3 +92,5 @@ def all_nodes_are_ok(label_selector: str = None,
             retval = localresult
 
     return retval
+
+
