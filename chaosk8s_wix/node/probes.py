@@ -7,7 +7,7 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 
 
-__all__ = ["get_nodes", "all_nodes_are_ok","get_nodes_for_chaos_test"]
+__all__ = ["get_nodes", "all_nodes_are_ok","get_nodes_for_chaos_test","get_nodes_for_chaos_test"]
 
 
 def get_nodes(label_selector: str = None,
