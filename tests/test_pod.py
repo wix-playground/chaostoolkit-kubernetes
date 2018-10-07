@@ -70,7 +70,7 @@ def test_pods_should_have_been_phase(cl, client, has_conf):
     with pytest.raises(FailedActivity) as x:
         assert pods_in_phase(
             label_selector="app=mysvc", phase="Running") is True
-    assert "pod 'app=mysvc' is in phase 'Pending' but should be "\
+    assert "pod 'app=mysvc' is in phase 'Pending' but should be " \
            "'Running'" in str(x)
 
 

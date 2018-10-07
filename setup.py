@@ -6,6 +6,7 @@ import io
 
 import setuptools
 
+
 def get_version_from_package() -> str:
     """
     Read the package version from the source without importing it.
@@ -19,6 +20,7 @@ def get_version_from_package() -> str:
                 version = version.replace("'", "").strip()
                 return version
 
+
 name = 'chaostoolkit-k8s-wix'
 desc = 'Extended version of Chaos Toolkit Kubernetes support'
 
@@ -26,7 +28,7 @@ with io.open('README.md', encoding='utf-8') as strm:
     long_desc = strm.read()
 
 classifiers = [
-    'Development Status :: 2 - Pre-Alpha',  
+    'Development Status :: 2 - Pre-Alpha',
     'Intended Audience :: Developers',
     'License :: Freely Distributable',
     'Operating System :: OS Independent',
@@ -57,7 +59,6 @@ with io.open('requirements-dev.txt') as f:
 install_require = []
 with io.open('requirements.txt') as f:
     install_require = [l.strip() for l in f if not l.startswith('#')]
-
 
 setup_params = dict(
     name=name,

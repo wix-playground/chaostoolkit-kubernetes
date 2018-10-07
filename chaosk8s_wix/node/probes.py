@@ -7,7 +7,6 @@ from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 from . import get_active_nodes, load_taint_list_from_dict
 
-
 __all__ = ["get_nodes", "all_nodes_are_ok"]
 
 
@@ -85,9 +84,8 @@ def all_nodes_are_ok(label_selector: str = None,
 
         if not localresult:
             logger.debug("{p} Is not healthy ' ".format(
-                         p=item.metadata.name))
+                p=item.metadata.name))
         if localresult is False:
             retval = localresult
 
     return retval
-

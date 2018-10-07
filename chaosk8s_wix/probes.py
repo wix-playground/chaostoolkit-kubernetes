@@ -15,11 +15,10 @@ import yaml
 from chaosk8s_wix import __version__, create_k8s_api_client
 from chaosk8s_wix.pod.probes import read_pod_logs
 
-
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok","get_nodes_for_chaos_test"]
+           "all_pods_in_all_ns_are_ok", "get_nodes_for_chaos_test"]
 
 
 def all_microservices_healthy(ns: str = "default",
@@ -207,17 +206,17 @@ def all_pods_in_all_ns_are_ok(ns_ignore_list: [] = None,
                 if status.state.running is None:
                     if i.metadata.namespace not in ns_ignore_list:
                         logger.info("%s\t%s\t%s \t%s is not good" % (
-                                    i.status.host_ip,
-                                    i.metadata.namespace,
-                                    i.metadata.name,
-                                    i.status.container_statuses[0].state))
+                            i.status.host_ip,
+                            i.metadata.namespace,
+                            i.metadata.name,
+                            i.status.container_statuses[0].state))
                         retval = False
                     else:
                         logger.info("%s\t%s\t%s \t%s is not good but IGNORED by back list" % (
-                                    i.status.host_ip,
-                                    i.metadata.namespace,
-                                    i.metadata.name,
-                                    i.status.container_statuses[0].state))
+                            i.status.host_ip,
+                            i.metadata.namespace,
+                            i.metadata.name,
+                            i.status.container_statuses[0].state))
     return retval
 
 

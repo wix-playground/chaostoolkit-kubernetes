@@ -12,7 +12,6 @@ from chaoslib.types import Discovery, DiscoveredActivities, \
 from kubernetes import client, config
 from logzero import logger
 
-
 __all__ = ["create_k8s_api_client", "discover", "__version__"]
 __version__ = '1.0.8'
 

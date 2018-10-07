@@ -388,7 +388,7 @@ def remove_label_from_node(label_selector: str = None,
     }
 
     taint_ignore_list = []
-    if configuration["taints-ignore-list"] is not None:
+    if configuration is not None and configuration["taints-ignore-list"] is not None:
         taint_ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
     resp, k8s_api_v1 = get_active_nodes(label_selector, taints_ignore_list=taint_ignore_list, secrets=secrets)
 

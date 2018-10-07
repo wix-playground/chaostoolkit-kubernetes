@@ -12,7 +12,6 @@ from kubernetes import client, watch
 from chaosk8s_wix import create_k8s_api_client
 from chaoslib.exceptions import FailedActivity
 
-
 __all__ = ["pods_in_phase", "pods_not_in_phase", "read_pod_logs", "count_pods"]
 
 

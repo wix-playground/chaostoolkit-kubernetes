@@ -1,11 +1,11 @@
 language: python
 
 python:
-  - 3.5
-  - 3.6
+- 3.5
+- 3.6
 
 install:
-  - pip install -r requirements.txt -r requirements-dev.txt
+- pip install -r requirements.txt -r requirements-dev.txt
 
 env:
   global:
@@ -13,5 +13,5 @@ env:
   - secure: "kc84gTCYuRdKVQNvIneOHEy4Bii1YMlrh19ksi/5t8aL+fdvsknQXw6grFwH9kOIM5PB5hbY5YFqyWfzTNq+b8k+aBr2k5Zsgtgp+7VLMz31mWLiYrhA24I5nBSLWmingIxOWOKog5cJr3tK3QD8Wdj6UC1khQK7gFUc0ibBG8SJQfy/JJw6vVtUaJEMO7fRbuyn/ByHc4vFPJ0O/nEue1wRxIkRzyhNhk8ilpST0ybldjjwjaZ4yiA2QpcmwGx2SqVhvQMYP8awe+P4aGTzcZ0mOwZKNPCQqRThJZnpyaxAwzM6qlaUGgAP/WSfRkJzaXGefttr4lmdVVTW9o+EppZ18Fg9VpTgQxdcDOIvqi85bISagoZE/AN2fa87IbZ1KwXQMbjn5nZ2MaSJyulubRTwlfUM28b7s3G5Ozru95Z3HxaNXVj3OtpyPV8+1xnnUhMKmZDffIFJResuJZ8GQ+fiyIQnf318e+YOOIcQ6cr1t5sFZj/enPF+Bxn3ZP4cLQum4niWsMVttf7hyPPR+9IZ8Tmic374le158zb+KM0oRohv6dI+YHB7k5THcXMQk1PoaN/jy1DYbtHisQkRM8KnX8q6qTg8sU+A/gzTdfi7qyzl3CE0qyBhpgltcSrtQb9lOM9wik2TWEdZbOiL6rAK67IpHO8eCz9wFkUmyaM="
 
 script:
-  - bash ci.bash
+- bash ci.bash
 

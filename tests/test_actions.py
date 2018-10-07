@@ -9,7 +9,7 @@ import pytest
 
 from chaosk8s_wix.actions import start_microservice, kill_microservice
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
-    uncordon_node, drain_nodes,remove_label_from_node, taint_nodes_by_label, add_label_to_node
+    uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -188,7 +188,7 @@ def test_drain_nodes_by_name(cl, client, has_conf):
     result = MagicMock()
     result.items = [node]
     v1.list_node.return_value = result
-    
+
     owner = MagicMock()
     owner.controller = True
     owner.kind = "ReplicationSet"
@@ -233,7 +233,7 @@ def test_daemonsets_cannot_be_drained(cl, client, has_conf):
     result = MagicMock()
     result.items = [node]
     v1.list_node.return_value = result
-    
+
     owner = MagicMock()
     owner.controller = True
     owner.kind = "DaemonSet"
@@ -269,7 +269,7 @@ def test_pod_with_local_volume_cannot_be_drained(cl, client, has_conf):
     result = MagicMock()
     result.items = [node]
     v1.list_node.return_value = result
-    
+
     owner = MagicMock()
     owner.controller = True
     owner.kind = "ReplicationSet"
@@ -309,7 +309,7 @@ def test_pod_with_local_volume_cannot_be_drained_unless_forced(cl, client,
     result = MagicMock()
     result.items = [node]
     v1.list_node.return_value = result
-    
+
     owner = MagicMock()
     owner.controller = True
     owner.kind = "ReplicationSet"
@@ -354,7 +354,7 @@ def test_mirror_pod_cannot_be_drained(cl, client, has_conf):
     result = MagicMock()
     result.items = [node]
     v1.list_node.return_value = result
-    
+
     owner = MagicMock()
     owner.controller = True
     owner.kind = "ReplicationSet"
@@ -379,7 +379,7 @@ def test_mirror_pod_cannot_be_drained(cl, client, has_conf):
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
-@patch('chaosk8s_wix.node.actions.client', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
 @patch('chaosk8s_wix.client')
 def test_remove_label_from_node(cl, client, has_conf):
     fake_node_name = "fake_node.com"
@@ -390,13 +390,14 @@ def test_remove_label_from_node(cl, client, has_conf):
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
     spec = k8sClient.V1NodeSpec(unschedulable=False)
-    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
-    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name, labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata=metadata)
     response = k8sClient.V1NodeList(items=[node])
 
     v1.list_node_with_http_info.return_value = response
     v1.patch_node.return_value = node
     client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
 
     label_selector = 'label_default=true, label1=True'
 
@@ -420,8 +421,8 @@ def test_add_label_to_node(cl, client, has_conf):
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
     spec = k8sClient.V1NodeSpec(unschedulable=False)
-    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
-    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name, labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata=metadata)
     response = k8sClient.V1NodeList(items=[node])
 
     v1.list_node_with_http_info.return_value = response
@@ -437,6 +438,7 @@ def test_add_label_to_node(cl, client, has_conf):
     v1.patch_node.assert_called_with(
         fake_node_name, {'metadata': {'labels': {'label1': "value1"}}})
 
+
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')
@@ -449,8 +451,8 @@ def test_taint_nodes_by_label(cl, client, has_conf):
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
     spec = k8sClient.V1NodeSpec(unschedulable=False)
-    metadata = k8sClient.V1ObjectMeta(name=fake_node_name,labels={"label1": "True"})
-    node = k8sClient.V1Node(status=status, spec=spec, metadata = metadata)
+    metadata = k8sClient.V1ObjectMeta(name=fake_node_name, labels={"label1": "True"})
+    node = k8sClient.V1Node(status=status, spec=spec, metadata=metadata)
 
     response = k8sClient.V1NodeList(items=[node])
 
@@ -458,11 +460,12 @@ def test_taint_nodes_by_label(cl, client, has_conf):
     v1.patch_node.return_value = node
     client.CoreV1Api.return_value = v1
 
+
     label_selector = 'label_default=true, label1=True'
 
-    taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps",  effect="NoExec")
+    taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps", effect="NoExec")
 
     v1.list_node_with_http_info.assert_called_with(
         label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
     v1.patch_node.assert_called_with(
-        fake_node_name,  {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'value': 'Apps'}]}})
+        fake_node_name, {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'value': 'Apps'}]}})

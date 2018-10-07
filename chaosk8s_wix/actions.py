@@ -12,7 +12,6 @@ import yaml
 
 from chaosk8s_wix import create_k8s_api_client
 
-
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
            "remove_service_endpoint"]
 
