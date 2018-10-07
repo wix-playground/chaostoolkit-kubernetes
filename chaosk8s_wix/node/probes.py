@@ -5,9 +5,10 @@ from kubernetes import client
 
 from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
+from . import get_active_nodes, load_taint_list_from_dict
 
 
-__all__ = ["get_nodes", "all_nodes_are_ok","get_nodes_for_chaos_test"]
+__all__ = ["get_nodes", "all_nodes_are_ok"]
 
 
 def get_nodes(label_selector: str = None,
@@ -49,6 +50,7 @@ def check_containers_for_node(client, nodename):
         logger.info("%s\tis OK" % nodename)
     return retval
 
+
 def all_nodes_are_ok(label_selector: str = None,
                      configuration: Configuration = None,
                      secrets: Secrets = None):
@@ -56,19 +58,15 @@ def all_nodes_are_ok(label_selector: str = None,
     List all Kubernetes worker nodes in your cluster. You may filter nodes
     by specifying a label selector.
     """
-    retval = True
 
-    api = create_k8s_api_client(secrets)
-    v1 = client.CoreV1Api(api)
-    if label_selector:
-        ret = v1.list_node_with_http_info(label_selector=label_selector,
-                                          _preload_content=True,
-                                          _return_http_data_only=True)
-    else:
-        ret = v1.list_node_with_http_info(_preload_content=True,
-                                          _return_http_data_only=True)
-    items_in_list = ret.items
-    for item in items_in_list:
+    retval = True
+    ignore_list = []
+    if configuration is not None:
+        ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
+
+    resp, k8s_api_v1 = get_active_nodes(label_selector, ignore_list, secrets)
+
+    for item in resp.items:
         localresult = True
         for condition in item.status.conditions:
             if condition.type == "Ready" and condition.status == "False":
@@ -92,5 +90,4 @@ def all_nodes_are_ok(label_selector: str = None,
             retval = localresult
 
     return retval
-
 

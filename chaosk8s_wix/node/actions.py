@@ -11,11 +11,12 @@ import time
 from typing import Any, Dict, Union
 
 from chaoslib.exceptions import FailedActivity
-from chaoslib.types import Secrets
+from chaoslib.types import Secrets, Configuration
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from logzero import logger
 from random import randint
+from . import get_active_nodes, load_taint_list_from_dict
 
 from chaosk8s_wix import create_k8s_api_client
 
@@ -371,9 +372,10 @@ def add_label_to_node(label_selector: str = None,
 
 def remove_label_from_node(label_selector: str = None,
                            label_name: str = "under_chaos_test",
-                           secrets: Secrets = None) -> bool:
+                           secrets: Secrets = None,
+                           configuration: Configuration = None) -> bool:
     """
-    remove laebls from nodes.ususally in rollback
+    remove labels from nodes.ususally in rollback
 
     """
 
@@ -385,10 +387,14 @@ def remove_label_from_node(label_selector: str = None,
         }
     }
 
-    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
-    for node in items:
+    taint_ignore_list = []
+    if configuration["taints-ignore-list"] is not None:
+        taint_ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
+    resp, k8s_api_v1 = get_active_nodes(label_selector, taints_ignore_list=taint_ignore_list, secrets=secrets)
+
+    for node in resp.items:
         try:
-            k8s_pai_v1.patch_node(node.metadata.name, body)
+            k8s_api_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("Creating new node failed: {}".format(x.body))
     return True
@@ -465,7 +471,8 @@ def taint_nodes_by_label(label_selector: str = None,
 def label_random_node(label_selector: str = None,
                       label_name: str = "under_chaos_test",
                       label_value: str = "True",
-                      secrets: Secrets = None) -> bool:
+                      secrets: Secrets = None,
+                      configuration: Configuration = None) -> bool:
     """
     label nodes. Later we will use label to perform actual experiments on node
 
@@ -478,14 +485,17 @@ def label_random_node(label_selector: str = None,
             }
         }
     }
-
-    items, k8s_pai_v1 = get_node_list(label_selector, secrets)
+    taint_ignore_list = []
+    if configuration["taints-ignore-list"] is not None:
+        taint_ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
+    resp, k8s_api_v1 = get_active_nodes(label_selector, taints_ignore_list=taint_ignore_list, secrets=secrets)
+    items = resp.items
     node_index = randint(0, len(items) - 1)
     node = items[node_index]
     logger.debug("Picked node '{p}' to be labeled for tests".format(
         p=node.metadata.name))
     try:
-        k8s_pai_v1.patch_node(node.metadata.name, body)
+        k8s_api_v1.patch_node(node.metadata.name, body)
     except ApiException as x:
         raise FailedActivity("Creating new node failed: {}".format(x.body))
     return True

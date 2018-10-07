@@ -13,7 +13,8 @@ from chaosk8s_wix.probes import all_microservices_healthy, \
     microservice_available_and_healthy, microservice_is_not_available, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs, all_pods_in_all_ns_are_ok
-from chaosk8s_wix.node.probes import get_nodes, all_nodes_are_ok
+from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nodes
+from chaosk8s_wix.node import load_taint_list_from_dict
 
 
 def create_node_object(name: str="default", labels: {}=None)-> k8sClient.V1Node:
@@ -245,7 +246,7 @@ def test_can_select_nodes_by_label(cl, client, has_conf):
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
-@patch('chaosk8s_wix.node.probes.client', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
 @patch('chaosk8s_wix.client')
 def test_all_nodes_are_ok(cl, client, has_conf):
     has_conf.return_value = False
@@ -263,6 +264,7 @@ def test_all_nodes_are_ok(cl, client, has_conf):
     v1.list_node_with_http_info.assert_called_with(
         label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
     assert resp is True
+
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.probes.client', autospec=True)
@@ -320,3 +322,54 @@ def test_all_pods_in_all_ns_are_ok_ignore(cl, client, has_conf):
     resp = all_pods_in_all_ns_are_ok(ns_ignore_list=["db-catalog"])
     v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
     assert resp is True
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_get_non_tainted_nodes(cl, client, has_conf):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    node1 = create_node_object("tainted_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="faketaint", time_added=None, value=None)
+    node1.spec.taints = [taint]
+    node2 = create_node_object("not_tainted_node")
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+    resp, v1 = get_active_nodes()
+    assert len(resp.items) == 2
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_get_non_tainted_nodes_filtered(cl, client, has_conf):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    taint2 = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", value="spot", time_added=None)
+
+    ignore_list = [taint1, taint2]
+
+    node1 = create_node_object("tainted_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="faketaint", time_added=None, value=None)
+    node1.spec.taints = [taint]
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    node3 = create_node_object("not_tainted")
+
+    response = k8sClient.V1NodeList(items=[node1, node2,  node3])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    resp,v1 = get_active_nodes(taints_ignore_list=ignore_list)
+    assert 2 == len(resp.items)
