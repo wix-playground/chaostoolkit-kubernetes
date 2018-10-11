@@ -17,7 +17,7 @@ from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nod
 from chaosk8s_wix.node import load_taint_list_from_dict
 
 
-def create_node_object(name: str = "default", labels: {} = None) -> k8sClient.V1Node:
+def create_node_object(name: str="default", labels: {}=None)-> k8sClient.V1Node:
     condition = k8sClient.V1NodeCondition(type="Ready", status="True")
     status = k8sClient.V1NodeStatus(conditions=[condition])
     spec = k8sClient.V1NodeSpec(unschedulable=False)
@@ -26,19 +26,17 @@ def create_node_object(name: str = "default", labels: {} = None) -> k8sClient.V1
     return node
 
 
-def create_pod_object(name: str = "default", imagename: str = None, labels: {} = None, state: str = "running",
-                      namespace: str = "default") -> k8sClient.V1Pod:
+def create_pod_object(name: str="default",  imagename: str=None,labels: {}=None, state: str="running", namespace: str="default")-> k8sClient.V1Pod:
     container_state = k8sClient.V1ContainerState(running=MagicMock())
     if state == "terminated":
-        container_state = k8sClient.V1ContainerState(terminated=MagicMock())
+        container_state = k8sClient.V1ContainerState( terminated=MagicMock())
 
     image = k8sClient.V1ContainerImage(names=[imagename])
-    container_status = k8sClient.V1ContainerStatus(state=container_state, image=image, image_id="fakeimage",
-                                                   name="fakename", ready="True", restart_count=0)
+    container_status = k8sClient.V1ContainerStatus(state=container_state, image=image,image_id="fakeimage", name="fakename",ready="True",restart_count=0)
 
     condition = k8sClient.V1PodCondition(type="Ready", status=[container_status])
-    status = k8sClient.V1PodStatus(conditions=[condition], container_statuses=[container_status])
-    container = k8sClient.V1Container(image=image, name="fakename1")
+    status = k8sClient.V1PodStatus(conditions=[condition],container_statuses=[container_status])
+    container = k8sClient.V1Container(image=image,name="fakename1")
     spec = k8sClient.V1PodSpec(containers=[container])
     metadata = k8sClient.V1ObjectMeta(name=name, labels=labels, namespace=namespace)
     node = k8sClient.V1Pod(status=status, spec=spec, metadata=metadata)
@@ -134,7 +132,7 @@ def test_expecting_service_endpoint_should_be_initialized(cl, client,
 @patch('chaosk8s_wix.probes.client', autospec=True)
 @patch('chaosk8s_wix.client')
 def test_unitialized_or_not_existing_service_endpoint_should_not_be_considered_available(
-        cl, client, has_conf):
+    cl, client, has_conf):
     has_conf.return_value = False
     service = MagicMock()
     result = MagicMock()
@@ -368,10 +366,10 @@ def test_get_non_tainted_nodes_filtered(cl, client, has_conf):
 
     node3 = create_node_object("not_tainted")
 
-    response = k8sClient.V1NodeList(items=[node1, node2, node3])
+    response = k8sClient.V1NodeList(items=[node1, node2,  node3])
     v1.list_node_with_http_info.return_value = response
     client.CoreV1Api.return_value = v1
     client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
 
-    resp, v1 = get_active_nodes(taints_ignore_list=ignore_list)
+    resp,v1 = get_active_nodes(taints_ignore_list=ignore_list)
     assert 2 == len(resp.items)

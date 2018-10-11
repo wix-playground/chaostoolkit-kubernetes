@@ -211,6 +211,7 @@ def all_pods_in_all_ns_are_ok(ns_ignore_list: [] = None,
                             i.metadata.name,
                             i.status.container_statuses[0].state))
                         retval = False
+                        break
                     else:
                         logger.info("%s\t%s\t%s \t%s is not good but IGNORED by back list" % (
                             i.status.host_ip,
