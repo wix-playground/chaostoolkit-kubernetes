@@ -2,7 +2,7 @@
 from kubernetes import client
 from chaosk8s_wix import create_k8s_api_client
 from chaoslib.types import Secrets
-import json
+
 
 __all__ = ["get_active_nodes", "node_should_be_ignored_by_taints", "is_equal_V1Taint", "load_taint_list_from_dict"]
 

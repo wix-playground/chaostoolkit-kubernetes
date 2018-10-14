@@ -10,7 +10,7 @@ import setuptools
 def get_version_from_package() -> str:
     """
     Read the package version from the source without importing it.
-    Will accept version information from
+    Will accept version information from TRAVIS_TAG env var
     """
     version = "UNKNOWN"
     val = os.getenv("TRAVIS_TAG")

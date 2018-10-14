@@ -9,6 +9,8 @@ from chaoslib.exceptions import FailedActivity
 from chaoslib.types import Secrets
 from kubernetes import client
 from logzero import logger
+from chaosk8s_wix.slack.client import post_message
+
 
 from chaosk8s_wix import create_k8s_api_client
 
@@ -61,5 +63,6 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
 
     body = client.V1DeleteOptions()
     for p in pods:
+        post_message("Killing pod " + p.metadata.name)
         res = v1.delete_namespaced_pod(
             p.metadata.name, ns, body)

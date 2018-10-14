@@ -17,6 +17,7 @@ from kubernetes.client.rest import ApiException
 from logzero import logger
 from random import randint
 from . import get_active_nodes, load_taint_list_from_dict
+from chaosk8s_wix.slack.client import post_message
 
 from chaosk8s_wix import create_k8s_api_client
 
@@ -394,6 +395,7 @@ def remove_label_from_node(label_selector: str = None,
 
     for node in resp.items:
         try:
+            post_message("Remove label from node :" + node.metadata.name + " with label: " + label_name)
             k8s_api_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("Creating new node failed: {}".format(x.body))
@@ -432,6 +434,7 @@ def remove_taint_from_node(label_selector: str = None,
 
     for node in items:
         try:
+            post_message("Remove taint from node :" + node.metadata.name)
             k8s_pai_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("Un tainting node failed: {}".format(x.body))
@@ -462,6 +465,7 @@ def taint_nodes_by_label(label_selector: str = None,
 
     for node in items:
         try:
+            post_message("Taint node :" + node.metadata.name)
             k8s_api_v1.patch_node(node.metadata.name, body)
         except ApiException as x:
             raise FailedActivity("tainting node failed: {}".format(x.body))
@@ -495,6 +499,7 @@ def label_random_node(label_selector: str = None,
     logger.debug("Picked node '{p}' to be labeled for tests".format(
         p=node.metadata.name))
     try:
+        post_message("Label node :" + node.metadata.name + " with label: " + label_name)
         k8s_api_v1.patch_node(node.metadata.name, body)
     except ApiException as x:
         raise FailedActivity("Creating new node failed: {}".format(x.body))
