@@ -57,7 +57,7 @@ def all_nodes_are_ok(label_selector: str = None,
     List all Kubernetes worker nodes in your cluster. You may filter nodes
     by specifying a label selector.
     """
-
+    logger.debug("========================================================================================" )
     retval = True
     ignore_list = []
     if configuration is not None:

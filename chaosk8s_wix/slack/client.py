@@ -6,7 +6,7 @@ from chaoslib.settings import load_settings
 
 __all__ = ["post_message"]
 
-
+someshit
 def get_settings():
     """
     Gets relevant settings for slack notifications
