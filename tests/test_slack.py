@@ -27,4 +27,6 @@ def test_post_message(get_settings):
 
         assert m.called
         assert m._adapter.last_request.path == "/api/chat.postmessage"
-        assert m._adapter.last_request.text.startswith("channel=%23fake-channel&text=test") is True
+        assert m._adapter.last_request.text.find("channel=%23fake-channel") is not -1
+        assert m._adapter.last_request.text.find("text=test") is not -1
+
