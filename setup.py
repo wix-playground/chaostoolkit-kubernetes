@@ -52,7 +52,6 @@ author_email = 'contact@chaostoolkit.org'
 url = 'http://chaostoolkit.org'
 license = 'Apache License Version 2.0'
 
-packages=find_packages(exclude=['contrib', 'docs', 'tests*'])
 
 packages = [
     'chaosk8s_wix',
