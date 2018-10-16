@@ -7,7 +7,7 @@ import os
 import socket
 
 
-__all__ = ["post_message", "get_slack_token_from_env"]
+__all__ = ["post_message", "get_val_from_env"]
 
 
 def get_job_url():
@@ -22,19 +22,22 @@ def get_job_url():
     return retval
 
 
-def get_slack_token_from_env(entry) -> str:
+def get_val_from_env(entry, key_name, envvar_name) -> str:
     """
-    Return slack token. Env variable SLACK_TOKEN will have precedence before any other configuration
+    Return value from settings entry token. Env variable SLACK_TOKEN and SLACK_CHANNEL will have precedence before any
+    other configurations
     :param entry: current entry with slack configuration from ~/.chaostoolkit/settings.yml
-    :return: if SLACK_TOKEN defined, the value of SLACK_TOKEN. token from entry otherwise
+    :param key_name: name of key in entry that holds default value
+    :param envvar_name: name of env var that holds value
+    :return: if  defined, the value of env var . token from entry otherwise
     """
-    token = ""
+    value = ""
     if entry is not None:
-        token = entry["token"]
-    val = os.getenv("SLACK_TOKEN")
+        value = entry[key_name]
+    val = os.getenv(envvar_name)
     if val is not None:
-        token = val
-    return token
+        value = val
+    return value
 
 
 def get_settings():
@@ -43,14 +46,8 @@ def get_settings():
     :return: dictionary with token and channel for slack notifications
     """
     retval = {}
-    settings = load_settings()
-    if settings is not None and len(settings.keys()) > 0:
-        notifications = settings["notifications"]
-        for entry in notifications:
-            if entry["module"] == 'chaosslack.notification':
-                retval["token"] = get_slack_token_from_env(entry)
-                retval["channel"] = entry["channel"]
-                break
+    retval["token"] = get_val_from_env(None, "token", "SLACK_TOKEN")
+    retval["channel"] = get_val_from_env(None, "token", "SLACK_CHANNEL")
 
     return retval
 

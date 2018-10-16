@@ -50,9 +50,7 @@ classifiers = [
 author = 'chaostoolkit Team'
 author_email = 'contact@chaostoolkit.org'
 url = 'http://chaostoolkit.org'
-license = 'Apache License Version 2.0'
-
-
+license = 'Apache License Version 2
 packages = [
     'chaosk8s_wix',
     'chaosk8s_wix.node',
