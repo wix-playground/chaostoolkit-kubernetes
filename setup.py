@@ -51,10 +51,14 @@ author = 'chaostoolkit Team'
 author_email = 'contact@chaostoolkit.org'
 url = 'http://chaostoolkit.org'
 license = 'Apache License Version 2.0'
+
+packages=find_packages(exclude=['contrib', 'docs', 'tests*'])
+
 packages = [
     'chaosk8s_wix',
     'chaosk8s_wix.node',
-    'chaosk8s_wix.pod'
+    'chaosk8s_wix.pod',
+    'chaosk8s_wix.slack'
 ]
 
 needs_pytest = set(['pytest', 'test']).intersection(sys.argv)
