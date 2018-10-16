@@ -53,11 +53,11 @@ def check_containers_for_node(client, nodename):
 def all_nodes_are_ok(label_selector: str = None,
                      configuration: Configuration = None,
                      secrets: Secrets = None):
+    print("hello sullivan")
     """
     List all Kubernetes worker nodes in your cluster. You may filter nodes
     by specifying a label selector.
     """
-    logger.debug("========================================================================================" )
     retval = True
     ignore_list = []
     if configuration is not None:
