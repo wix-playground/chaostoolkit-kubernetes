@@ -28,7 +28,9 @@ def get_slack_token_from_env(entry) -> str:
     :param entry: current entry with slack configuration from ~/.chaostoolkit/settings.yml
     :return: if SLACK_TOKEN defined, the value of SLACK_TOKEN. token from entry otherwise
     """
-    token = entry["token"]
+    token = ""
+    if entry is not None:
+        token = entry["token"]
     val = os.getenv("SLACK_TOKEN")
     if val is not None:
         token = val
@@ -42,12 +44,13 @@ def get_settings():
     """
     retval = {}
     settings = load_settings()
-    notifications = settings["notifications"]
-    for entry in notifications:
-        if entry["module"] == 'chaosslack.notification':
-            retval["token"] = get_slack_token_from_env(entry)
-            retval["channel"] = entry["channel"]
-            break
+    if settings is not None and len(settings.keys()) > 0:
+        notifications = settings["notifications"]
+        for entry in notifications:
+            if entry["module"] == 'chaosslack.notification':
+                retval["token"] = get_slack_token_from_env(entry)
+                retval["channel"] = entry["channel"]
+                break
 
     return retval
 
