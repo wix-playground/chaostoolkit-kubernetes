@@ -506,8 +506,11 @@ def test_tag_random_node_aws(client, has_conf,boto_client):
                                                       ]
                                                   }]
                                              }
-
-    retval, nodename = tag_random_node_aws(k8s_label_selector="label_selector", secrets=None, tag_name="test_tag")
+    config = create_config_with_taint_ignore()
+    retval, nodename = tag_random_node_aws(k8s_label_selector="label_selector",
+                                           secrets=None,
+                                           tag_name="test_tag",
+                                           configuration=config)
 
     assert retval == 0
     assert nodename == "node1"
