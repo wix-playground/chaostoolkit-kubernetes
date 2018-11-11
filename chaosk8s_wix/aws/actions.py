@@ -1,74 +1,236 @@
-from copy import deepcopy
+# -*- coding: utf-8 -*-
 import random
-from typing import Any, Dict, List
-
 import boto3
-from chaoslib.exceptions import FailedActivity
 from chaoslib.types import Configuration, Secrets
 from logzero import logger
+from chaosk8s_wix.node import get_active_nodes, load_taint_list_from_dict
+from chaosk8s_wix.slack.client import post_message
+from fabric import api
+import os
 
-from chaosaws import aws_client
-from chaosaws.types import AWSResponse
+__all__ = [
+            "tag_random_node_aws",
+            "set_tag_to_aws_instance",
+            "detach_sq_from_instance_by_tag",
+            "attach_sq_to_instance_by_tag",
+            "remove_tag_from_aws_instances",
+            "iptables_block_port",
+            "terminate_instance_by_tag"
+          ]
 
-from collections import defaultdict
 
-__all__ = ["as_rescale_and_kill"]
+def get_aws_filters_from_configuration(configuration: Configuration = None):
+    filters_to_set = []
+    if configuration is not None and "aws-instance-filters" in configuration.keys() is not None:
+        filters_to_set = configuration["aws-instance-filters"]
+    return filters_to_set
 
 
-def as_rescale_and_kill(label_selector: str = None, count: int = None,
-                        grace_period_seconds: int = None,
-                        secrets: Secrets = None):
+def get_sg_id_by_name(name: str = ""):
+    retval = ""
+    if name != "":
+        ec2 = boto3.client('ec2')
+        security_groups = ec2.describe_security_groups(
+                                Filters=[
+                                    {
+                                        "Name": "group-name",
+                                        "Values": [name]
+                                    }
+                                ]
+                            )
+        for sg in security_groups['SecurityGroups']:
+            retval = sg['GroupId']
+    return retval
+
+
+def set_tag_to_aws_instance(k8s_node_name: str = "not_defined",
+                            tag_name: str = "under_chaostest",
+                            aws_instance_filter: list = []):
     """
-    Rescale AS group wait for rescaling complete and kill  nodes gracefully.
-    Select the appropriate nodes by label.
-
-    Nodes are not drained beforehand so we can see how cluster behaves. Nodes
-    cannot be restarted, they are really deleted. Please be careful when using
-    this action.
-
-    On certain cloud providers, you also need to delete the underneath VM
-    instance as well afterwards. This is the case on GCE for instance.
-
-    If `all` is set to `True`, all nodes will be terminated.
-    If `rand` is set to `True`, one random node will be terminated.
-    If ̀`count` is set to a positive number, only a upto `count` nodes
-    (randomly picked) will be terminated. Otherwise, the first retrieved node
-    will be terminated.
+    Set tag to aws node. k8s_node_name should be the same as PrivateDnsName parameter in aws
+    :param k8s_node_name: k8s node name is the same as PrivateDnsName field in aws
+    :param tag_name:  tag name to set
+    :param aws_instance_filter: not all aws instances are included into chaos testing scope.
+    :return: result of ec2.create_tags, None if instance with specified PrivateDnsName was not found
     """
-    api = create_k8s_api_client(secrets)
+    filters_to_set = []
+    if aws_instance_filter is not None:
+        filters_to_set = aws_instance_filter
 
-    v1 = client.CoreV1Api(api)
-    ret = v1.list_node(label_selector=label_selector)
+    ec2 = boto3.client('ec2')
+    retval = None
+    response = ec2.describe_instances(Filters=filters_to_set)
 
-    logger.debug("Found {d} nodes labelled '{s}'".format(
-        d=len(ret.items), s=label_selector))
+    for reservation in (response["Reservations"]):
+        for instance in reservation["Instances"]:
+            if instance['PrivateDnsName'] == k8s_node_name:
+                retval = ec2.create_tags(Resources=[instance['InstanceId']],
+                                         Tags=[{'Key': tag_name, 'Value': tag_name}])
+    return retval
 
-    nodes = ret.items
-    if not nodes:
-        raise FailedActivity(
-            "failed to find a node that matches selector {}".format(
-                label_selector))
 
-    if rand:
-        nodes = [random.choice(nodes)]
-        logger.debug("Picked node '{p}' to be terminated".format(
-            p=nodes[0].metadata.name))
-    elif count is not None:
-        nodes = random.choices(nodes, k=count)
-        logger.debug("Picked {c} nodes '{p}' to be terminated".format(
-            c=len(nodes), p=", ".join([n.metadata.name for n in nodes])))
-    elif not all:
-        nodes = [nodes[0]]
-        logger.debug("Picked node '{p}' to be terminated".format(
-            p=nodes[0].metadata.name))
+def tag_random_node_aws(k8s_label_selector: str = None,
+                        secrets: Secrets = None,
+                        tag_name: str = "under_chaos_test",
+                        configuration: Configuration = None,
+                        ) -> (int, str):
+    """
+    This works for k8s in aws only. Tags aws instance with specific tag. nodes will be slected from k8s cluster, and
+    linked by PrivateDnsName property.
+
+    :param k8s_label_selector: label selector for k8s nodes "com.wix.lifecycle=true"
+    :param secrets: secrets to connect to k8s
+    :param tag_name: tag to set for aws instance that hosts selected node
+    :return: 0 and name of marked node. error code and erro description otherwise
+    """
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+
+    retval = 0
+    desc = ""
+    ignore_list = []
+    if configuration is not None:
+        ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
+
+    resp, k8s_api_v1 = get_active_nodes(k8s_label_selector, ignore_list, secrets)
+    random_node = random.choice(resp.items)
+    if random_node is not None:
+        aws_retval = set_tag_to_aws_instance(random_node.metadata.name, tag_name, filters_to_set)
+        if aws_retval is None:
+            retval = 1
+            desc = "Failed to set tag on aws node " + random_node.metadata.name
+        else:
+            desc = random_node.metadata.name
     else:
-        logger.debug("Picked all nodes '{p}' to be terminated".format(
-            p=", ".join([n.metadata.name for n in nodes])))
+        retval = 1
+        desc = "No node selected"
+    logger.info("label_random_node_aws selected node " + random_node.metadata.name + " with label " + tag_name)
+    return retval, desc
 
-    body = client.V1DeleteOptions()
-    for n in nodes:
-        res = v1.delete_node(
-            n.metadata.name, body, grace_period_seconds=grace_period_seconds)
 
-        if res.status != "Success":
-            logger.debug("Terminating nodes failed: {}".format(res.message))
+def remove_tag_from_aws_instances(configuration: Configuration = None,
+                                  tag_name: str = "under_chaostest") -> (int, str):
+    """
+    Removes tag if its already exist from aws instance.
+    :param tag_name: name of the tag to remove
+    :return:
+    """
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+
+    filters_to_set.append({'Name': 'tag:'+tag_name})
+
+    ec2 = boto3.client('ec2')
+    retval = None
+    response = ec2.describe_instances(Filters=filters_to_set)
+    array_of_ids = []
+    for reservation in (response["Reservations"]):
+        for instance in reservation["Instances"]:
+            array_of_ids.append(instance.id)
+    if len(array_of_ids) > 1:
+        ec2.delete_tags(Resources=array_of_ids, Tags=[{"Key": tag_name}])
+    return retval
+
+
+def attach_sq_to_instance_by_tag(tag_name: str = "not_set", sg_name: str = "not_set", configuration: Configuration = None):
+    """
+    Attaches security group to all instances with specific tag set.
+
+    :param tag_name: tag to filter aws instances
+    :param sg_name: security group name to attach
+    :param configuration: injected by chaostoolkit framework
+    :return: result of modify_attribute call
+    """
+    retval = None
+    ec2 = boto3.resource('ec2')
+
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+    filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    response = ec2.instances.filter(Filters=filters_to_set)
+    sg_id = get_sg_id_by_name(sg_name)
+    for instance in response:
+        all_sg_ids = []
+        all_sg_ids.append(sg_id)
+
+        post_message('Attach {} to instance {} {}'.format(sg_id, instance.id, instance.private_dns_name))
+        for interface in instance.network_interfaces:
+            retval = interface.modify_attribute(Groups=all_sg_ids)
+    return retval
+
+
+def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
+                                   sg_name: str = "not_set",
+                                   configuration: Configuration = None):
+    """
+    Detaches security group from instances market with specified tag.
+    :param tag_name: tag to filter aws instances
+    :param sg_name: security group name to attach
+    :param configuration: configuration: injected by chaostoolkit framework
+    :return: result of modify_attribute call
+    """
+    retval = None
+    ec2 = boto3.resource('ec2')
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+    filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    response = ec2.instances.filter(Filters=filters_to_set)
+
+    target_sg_id = get_sg_id_by_name(sg_name)
+    for instance in response:
+        all_sg_ids = [sg['GroupId'] for sg in instance.security_groups if sg['GroupId'] != target_sg_id]
+        post_message('Detach {} from instance {} {}'.format(target_sg_id,
+                                                            instance.id,
+                                                            instance.private_dns_name))
+
+        retval = instance.modify_attribute(Groups=all_sg_ids)
+    return retval
+
+
+def terminate_instance_by_tag(tag_name: str = "not_set",
+                              configuration: Configuration = None):
+    """
+    Terminates instance marked with specified tag in aws
+    :param tag_name: tag to filter aws instances
+    :param configuration: configuration: injected by chaostoolkit framework
+    :return: result of modify_attribute call
+    """
+    retval = None
+    ec2 = boto3.resource('ec2')
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+    filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    response = ec2.instances.filter(Filters=filters_to_set)
+
+    for instance in response:
+        post_message('Terminate instance {} {}'.format(instance.id, instance.private_dns_name))
+        retval = instance.terminate()
+    return retval
+
+
+def iptables_block_port(tag_name: str = "under_chaos_test",
+                        port: int = 0,
+                        protocol: str = "tcp",
+                        configuration: Configuration = None):
+    """
+    Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
+
+    :param tag_name: tag to filter aws instances
+    :param port: port to block
+    :param configuration: injected by chaostoolkit framework
+    :param protocol: udp/tcp
+    :return: result of shh command on host
+    """
+
+    retval = None
+    ec2 = boto3.resource('ec2')
+
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+    filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    response = ec2.instances.filter(Filters=filters_to_set)
+
+    api.env.key = os.getenv("SSH_KEY")
+    api.env.user = os.getenv("SSH_USER")
+    api.env.port = 22
+
+    for instance in response:
+        command_text = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000".format(protocol, port)
+        api.env.host_string = instance.private_ip_address
+        post_message("Run sudo {} \r\n on {}({})".format(command_text, instance.private_dns_name, instance.private_ip_address))
+        retval = api.sudo(command_text).return_code
+    return retval

@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
-import json
-import os.path
 import random
 import re
-from typing import Union
 
-from chaoslib.exceptions import FailedActivity
 from chaoslib.types import Secrets
 from kubernetes import client
 from logzero import logger

@@ -9,11 +9,11 @@ from logzero import logger
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 import yaml
-
 from chaosk8s_wix import create_k8s_api_client
+from chaosk8s_wix.slack.client import post_message
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
-           "remove_service_endpoint"]
+           "remove_service_endpoint", "kill_microservice_by_label"]
 
 
 def start_microservice(spec_path: str, ns: str = "default",
@@ -80,6 +80,53 @@ def kill_microservice(name: str, ns: str = "default",
 
     logger.debug("Found {d} pods named '{n}'".format(
         d=len(ret.items), n=name))
+
+    body = client.V1DeleteOptions()
+    for p in ret.items:
+        res = v1.delete_namespaced_pod(
+            p.metadata.name, ns, body)
+
+
+def kill_microservice_by_label(ns: str = "default",
+                               label_selector: str = "name in ({name})",
+                               secrets: Secrets = None):
+    """
+    Kill a microservice by `label_selector` in the namespace `ns`.
+
+    The microservice is killed by deleting the deployment for it without
+    a graceful period to trigger an abrupt termination.
+
+    The selected resources are matched by the given `label_selector`.
+    """
+
+    api = create_k8s_api_client(secrets)
+
+    v1 = client.AppsV1beta1Api(api)
+    ret = v1.list_namespaced_deployment(ns, label_selector=label_selector)
+
+    logger.debug("Found {d} deployments labeled '{n}'".format(
+        d=len(ret.items), n=label_selector))
+
+    body = client.V1DeleteOptions()
+    for d in ret.items:
+        post_message("Delete deployment {}".format(d.metadata.name))
+        res = v1.delete_namespaced_deployment(
+            d.metadata.name, ns, body)
+
+    logger.debug("Found {d} replica sets labeled '{n}'".format(
+        d=len(ret.items), n=label_selector))
+
+    v1 = client.ExtensionsV1beta1Api(api)
+    body = client.V1DeleteOptions()
+    for r in ret.items:
+        res = v1.delete_namespaced_replica_set(
+            r.metadata.name, ns, body)
+
+    v1 = client.CoreV1Api(api)
+    ret = v1.list_namespaced_pod(ns, label_selector=label_selector)
+
+    logger.debug("Found {d} pods labeled '{n}'".format(
+        d=len(ret.items), n=label_selector))
 
     body = client.V1DeleteOptions()
     for p in ret.items:

@@ -52,7 +52,7 @@ def get_settings():
     return retval
 
 
-def post_message(message_text):
+def post_message(message_text: str = " "):
     """
     Post message to channel defined in chaostoolkit settings file (~/.chaostoolkit/settings.yaml)
     :param message_text: Message text to send

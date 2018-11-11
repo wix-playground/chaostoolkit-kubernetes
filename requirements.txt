@@ -4,3 +4,4 @@ logzero
 chaostoolkit-lib>=0.15.1
 pyyaml
 slackclient
+fabric3

@@ -7,6 +7,7 @@ import urllib3
 from chaoslib.exceptions import FailedActivity
 
 from kubernetes import client as k8sClient
+from common import create_node_object, create_pod_object
 import pytest
 
 from chaosk8s_wix.probes import all_microservices_healthy, \
@@ -14,33 +15,6 @@ from chaosk8s_wix.probes import all_microservices_healthy, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs, all_pods_in_all_ns_are_ok
 from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nodes
-from chaosk8s_wix.node import load_taint_list_from_dict
-
-
-def create_node_object(name: str="default", labels: {}=None)-> k8sClient.V1Node:
-    condition = k8sClient.V1NodeCondition(type="Ready", status="True")
-    status = k8sClient.V1NodeStatus(conditions=[condition])
-    spec = k8sClient.V1NodeSpec(unschedulable=False)
-    metadata = k8sClient.V1ObjectMeta(name=name, labels=labels)
-    node = k8sClient.V1Node(status=status, spec=spec, metadata=metadata)
-    return node
-
-
-def create_pod_object(name: str="default",  imagename: str=None,labels: {}=None, state: str="running", namespace: str="default")-> k8sClient.V1Pod:
-    container_state = k8sClient.V1ContainerState(running=MagicMock())
-    if state == "terminated":
-        container_state = k8sClient.V1ContainerState( terminated=MagicMock())
-
-    image = k8sClient.V1ContainerImage(names=[imagename])
-    container_status = k8sClient.V1ContainerStatus(state=container_state, image=image,image_id="fakeimage", name="fakename",ready="True",restart_count=0)
-
-    condition = k8sClient.V1PodCondition(type="Ready", status=[container_status])
-    status = k8sClient.V1PodStatus(conditions=[condition],container_statuses=[container_status])
-    container = k8sClient.V1Container(image=image,name="fakename1")
-    spec = k8sClient.V1PodSpec(containers=[container])
-    metadata = k8sClient.V1ObjectMeta(name=name, labels=labels, namespace=namespace)
-    node = k8sClient.V1Pod(status=status, spec=spec, metadata=metadata)
-    return node
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -280,27 +254,36 @@ def test_all_pods_in_all_ns_are_ok(cl, client, has_conf):
     v1.list_pod_for_all_namespaces.return_value = response
     client.CoreV1Api.return_value = v1
 
-    resp = all_pods_in_all_ns_are_ok(ns_ignore_list=["db-catalog"])
+    resp = all_pods_in_all_ns_are_ok(configuration = {"ns-ignore-list": ["db-catalog"]})
     v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
     assert resp is True
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_all_pods_in_all_ns_are_ok_failure(cl, client, has_conf):
+def test_all_pods_in_all_ns_are_ok_failure(cl,nodes_client, client, has_conf):
     has_conf.return_value = False
     v1 = MagicMock()
 
     pod1 = create_pod_object("fakepod1")
     pod2 = create_pod_object("fakepod2", state="terminated")
     pod2.status.container_statuses[0].running = None
+    pod2.spec.node_name = "node1"
 
     response = k8sClient.V1PodList(items=[pod1, pod2])
     v1.list_pod_for_all_namespaces.return_value = response
+
+    node = MagicMock()
+    node.metadata.name = "node1"
+    v1.list_node_with_http_info.return_value = k8sClient.V1NodeList(items=[node])
+
+    nodes_client.CoreV1Api.return_value = v1
+    nodes_client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
     client.CoreV1Api.return_value = v1
 
-    resp = all_pods_in_all_ns_are_ok(ns_ignore_list=["db-catalog"])
+    resp = all_pods_in_all_ns_are_ok(configuration={"ns-ignore-list": ["db-catalog"]})
     v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
     assert resp is False
 
@@ -319,7 +302,7 @@ def test_all_pods_in_all_ns_are_ok_ignore(cl, client, has_conf):
     v1.list_pod_for_all_namespaces.return_value = response
     client.CoreV1Api.return_value = v1
 
-    resp = all_pods_in_all_ns_are_ok(ns_ignore_list=["db-catalog"])
+    resp = all_pods_in_all_ns_are_ok(configuration={"ns-ignore-list": ["db-catalog"]})
     v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
     assert resp is True
 

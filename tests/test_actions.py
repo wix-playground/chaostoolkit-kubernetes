@@ -10,7 +10,9 @@ import pytest
 from chaosk8s_wix.actions import start_microservice, kill_microservice
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
     uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node
-
+from chaosk8s_wix.aws.actions import tag_random_node_aws,attach_sq_to_instance_by_tag,detach_sq_from_instance_by_tag,iptables_block_port
+from common import create_node_object,create_config_with_taint_ignore
+import os
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 def test_cannot_process_other_than_yaml_and_json(has_conf):
@@ -465,7 +467,167 @@ def test_taint_nodes_by_label(cl, client, has_conf):
 
     taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps", effect="NoExec")
 
-    v1.list_node_with_http_info.assert_called_with(
-        label_selector=label_selector, _preload_content=True, _return_http_data_only=True)
     v1.patch_node.assert_called_with(
         fake_node_name, {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'value': 'Apps'}]}})
+
+
+@patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+def test_tag_random_node_aws(client, has_conf,boto_client):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    taint2 = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", value="spot", time_added=None)
+
+    ignore_list = [taint1, taint2]
+
+    node1 = create_node_object("node1")
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    client = MagicMock()
+    boto_client.client.return_value = client
+
+    client.describe_instances.return_value = {'Reservations':
+                                                      [{'Instances': [
+                                                          {'InstanceId': "id_1",
+                                                           'InstanceLifecycle': 'normal',
+                                                           'PrivateDnsName': 'node1'
+                                                           }
+                                                      ]
+                                                  }]
+                                             }
+
+    retval, nodename = tag_random_node_aws(k8s_label_selector="label_selector", secrets=None, tag_name="test_tag")
+
+    assert retval == 0
+    assert nodename == "node1"
+    client.create_tags.assert_called_with(Resources=['id_1'], Tags=[{'Key': 'test_tag', 'Value': 'test_tag'}])
+
+
+
+@patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+def test_attach_sq_to_instance_by_tag(client, has_conf,boto_client):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    taint2 = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", value="spot", time_added=None)
+
+    ignore_list = [taint1, taint2]
+
+    node1 = create_node_object("node1")
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    client = MagicMock()
+    boto_client.client.return_value = client
+    boto_client.resource.return_value = client
+    network_interface = MagicMock()
+
+    instance = MagicMock()
+    instance.security_groups = [
+        {
+            "GroupId": "some_testsgid"
+        }
+    ]
+    instance.network_interfaces = [network_interface]
+
+
+    client.instances.filter.return_value = [instance]
+    client.instances.ne
+
+    client.describe_security_groups.return_value = {'SecurityGroups':
+                                                    [
+                                                        {
+                                                            'GroupId': "i_testsgid",
+                                                        }
+                                                    ]
+    }
+    config = create_config_with_taint_ignore()
+    retval = attach_sq_to_instance_by_tag(tag_name="under_chaostest", sg_name="chaos_test_sg",configuration=config)
+
+    assert retval is not None
+    network_interface.modify_attribute.assert_called_with(Groups=['i_testsgid'])
+
+
+@patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+@patch('chaosk8s_wix.aws.actions.api', autospec=True)
+def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
+    fabric_api = MagicMock()
+    fabric.return_value = fabric_api
+
+    os.environ["SSH_KEY"] = "keytext"
+    os.environ["SSH_USER"] = "whatever"
+
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    taint2 = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", value="spot", time_added=None)
+
+    ignore_list = [taint1, taint2]
+
+    node1 = create_node_object("node1")
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    client = MagicMock()
+    boto_client.client.return_value = client
+    boto_client.resource.return_value = client
+
+    instance = MagicMock()
+    instance.pivate_ip_address = "test_ip"
+    instance.security_groups = [
+        {
+            "GroupId": "some_testsgid"
+        }
+    ]
+
+    client.instances.filter.return_value = [instance]
+
+    client.describe_security_groups.return_value = {'SecurityGroups':
+        [
+            {
+                'GroupId': "i_testsgid",
+            }
+        ]
+    }
+    config = create_config_with_taint_ignore()
+
+
+    retval = iptables_block_port(tag_name="under_chaostest", port=53, protocol="tcp",  configuration=config)
+
+    assert retval is not None
+
+    text = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000".format("tcp", 53)
+
+    fabric.sudo.assert_called_with(text)
+

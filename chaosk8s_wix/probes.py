@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
-import json
-import os.path
 from typing import Dict, Union
 import urllib3
 
 from chaoslib.exceptions import FailedActivity
-from chaoslib.types import MicroservicesStatus, Secrets
-import dateparser
+from chaoslib.types import MicroservicesStatus, Secrets, Configuration
 from logzero import logger
 from kubernetes import client, watch
-import yaml
 
 from chaosk8s_wix import __version__, create_k8s_api_client
 from chaosk8s_wix.pod.probes import read_pod_logs
+from chaosk8s_wix.node import load_taint_list_from_dict, get_active_nodes
+from chaosk8s_wix.slack.client import post_message
+
 
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok", "get_nodes_for_chaos_test"]
+           "all_pods_in_all_ns_are_ok", "all_deployments_are_ok"]
 
 
 def all_microservices_healthy(ns: str = "default",
@@ -32,9 +30,14 @@ def all_microservices_healthy(ns: str = "default",
     api = create_k8s_api_client(secrets)
     not_ready = []
     failed = []
+    not_in_condition = []
 
     v1 = client.CoreV1Api(api)
-    ret = v1.list_namespaced_pod(namespace=ns)
+    if ns == "":
+        ret = v1.list_pod_for_all_namespaces()
+    else:
+        ret = v1.list_namespaced_pod(namespace=ns)
+
     for p in ret.items:
         phase = p.status.phase
         if phase == "Failed":
@@ -44,6 +47,10 @@ def all_microservices_healthy(ns: str = "default",
 
     logger.debug("Found {d} failed and {n} not ready pods".format(
         d=len(failed), n=len(not_ready)))
+    for srv in failed:
+        logger.debug("Failed service", srv)
+    for srv in not_ready:
+        logger.debug("Not ready service", srv)
 
     # we probably should list them in the message
     if failed or not_ready:
@@ -187,37 +194,53 @@ def deployment_is_not_fully_available(name: str, ns: str = "default",
                 name=name, t=timeout))
 
 
-def all_pods_in_all_ns_are_ok(ns_ignore_list: [] = None,
+def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
                               secrets: Secrets = None):
     """
 
-    :param ns_ignore_list: list of namespaces to be ignored during calculation
+    :param configuration: experiment configuration
     :param secrets: k8s credentials
     :return: True if all pods are in running state, False otherwise
     """
+
+    ns_ignore_list = []
+    if configuration is not None and "ns-ignore-list" in configuration.keys():
+        ns_ignore_list = configuration["ns-ignore-list"]
+
+    taint_ignore_list = []
+    if configuration is not None \
+       and "taints-ignore-list" in configuration.keys():
+        taint_ignore_list = load_taint_list_from_dict(
+            configuration["taints-ignore-list"]
+        )
+
+    nodes, kubeclient = get_active_nodes(None, taint_ignore_list, secrets)
+
+    active_nodes = [i.metadata.name for i in nodes.items]
 
     api = create_k8s_api_client(secrets)
     v1 = client.CoreV1Api(api)
     pods = v1.list_pod_for_all_namespaces(watch=False)
     retval = True
     for i in pods.items:
-        if i.status.container_statuses is not None:
-            for status in i.status.container_statuses:
-                if status.state.running is None:
-                    if i.metadata.namespace not in ns_ignore_list:
-                        logger.info("%s\t%s\t%s \t%s is not good" % (
-                            i.status.host_ip,
-                            i.metadata.namespace,
-                            i.metadata.name,
-                            i.status.container_statuses[0].state))
-                        retval = False
-                        break
-                    else:
-                        logger.info("%s\t%s\t%s \t%s is not good but IGNORED by back list" % (
-                            i.status.host_ip,
-                            i.metadata.namespace,
-                            i.metadata.name,
-                            i.status.container_statuses[0].state))
+        if i.spec.node_name in active_nodes:
+            if i.status.container_statuses is not None:
+                for status in i.status.container_statuses:
+                    if status.state.running is None:
+                        if i.metadata.namespace not in ns_ignore_list:
+                            logger.info("%s\t%s\t%s \t%s is not good" % (
+                                i.status.host_ip,
+                                i.metadata.namespace,
+                                i.metadata.name,
+                                i.status.container_statuses[0].state))
+                            retval = False
+                            break
+                        else:
+                            logger.info("%s\t%s\t%s \t%s is IGNORED" % (
+                                i.status.host_ip,
+                                i.metadata.namespace,
+                                i.metadata.name,
+                                i.status.container_statuses[0].state))
     return retval
 
 

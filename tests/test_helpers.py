@@ -47,6 +47,7 @@ def test_node_is_tainted_true():
     assert node_should_be_ignored_by_taints([taint], ignore_list) is True
 
 
+
 def test_node_is_tainted_false():
     ignore_list = load_taint_list_from_dict(json.loads(taint_ignore_list_text)["taints-ignore-list"])
 
