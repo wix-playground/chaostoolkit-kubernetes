@@ -229,10 +229,12 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     api.env.key = os.getenv("SSH_KEY")
     api.env.user = os.getenv("SSH_USER")
     api.env.port = 22
-
+    text_format = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000"
     for instance in response:
-        command_text = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000".format(protocol, port)
+        command_text = text_format.format(protocol, port)
         api.env.host_string = instance.private_ip_address
-        post_message("Run sudo {} \r\n on {}({})".format(command_text, instance.private_dns_name, instance.private_ip_address))
+        post_message("Run sudo {} \r\n on {}({})".format(command_text,
+                                                         instance.private_dns_name,
+                                                         instance.private_ip_address))
         retval = api.sudo(command_text).return_code
     return retval
