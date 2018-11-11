@@ -130,7 +130,9 @@ def remove_tag_from_aws_instances(configuration: Configuration = None,
     return retval
 
 
-def attach_sq_to_instance_by_tag(tag_name: str = "not_set", sg_name: str = "not_set", configuration: Configuration = None):
+def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
+                                 sg_name: str = "not_set",
+                                 configuration: Configuration = None):
     """
     Attaches security group to all instances with specific tag set.
 
