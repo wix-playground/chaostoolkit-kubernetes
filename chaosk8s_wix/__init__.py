@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Chaostoolkit custom actions/probes lib from Wix.com
+"""
 import json
 import os
 import os.path
