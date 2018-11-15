@@ -10,17 +10,18 @@ from kubernetes import client, watch
 from chaosk8s_wix import __version__, create_k8s_api_client
 from chaosk8s_wix.pod.probes import read_pod_logs
 from chaosk8s_wix.node import load_taint_list_from_dict, get_active_nodes
-from chaosk8s_wix.slack.client import post_message
+from chaosk8s_wix.node.probes import all_nodes_are_ok
 
 
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok", "all_deployments_are_ok"]
+           "all_pods_in_all_ns_are_ok", "nodes_super_healthy"]
 
 
 def all_microservices_healthy(ns: str = "default",
-                              secrets: Secrets = None) -> MicroservicesStatus:
+                              secrets: Secrets = None,
+                              configuration: Configuration = None) -> MicroservicesStatus:
     """
     Check all microservices in the system are running and available.
 
@@ -31,7 +32,9 @@ def all_microservices_healthy(ns: str = "default",
     not_ready = []
     failed = []
     not_in_condition = []
-
+    ns_ignore_list = []
+    if configuration is not None and "ns-ignore-list" in configuration.keys():
+        ns_ignore_list = configuration["ns-ignore-list"]
     v1 = client.CoreV1Api(api)
     if ns == "":
         ret = v1.list_pod_for_all_namespaces()
@@ -40,10 +43,11 @@ def all_microservices_healthy(ns: str = "default",
 
     for p in ret.items:
         phase = p.status.phase
-        if phase == "Failed":
-            failed.append(p)
-        elif phase != "Running":
-            not_ready.append(p)
+        if p.metadata.namespace not in ns_ignore_list:
+            if phase == "Failed":
+                failed.append(p)
+            elif phase != "Running":
+                not_ready.append(p)
 
     logger.debug("Found {d} failed and {n} not ready pods".format(
         d=len(failed), n=len(not_ready)))
@@ -194,6 +198,20 @@ def deployment_is_not_fully_available(name: str, ns: str = "default",
                 name=name, t=timeout))
 
 
+def get_value_from_configuration(conf: Configuration, field_name:str):
+    """
+    Extracts value from chaostoolkit Configuration object with check for None
+    :param conf: chaostoolkit Configuration object
+    :param field_name: name of field to extract from root of conf
+    :return: Value of field named as field_name, None otherwise
+    """
+
+    retval = None
+    if conf is not None and field_name in conf.keys():
+        retval = conf[field_name]
+    return retval
+
+
 def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
                               secrets: Secrets = None):
     """
@@ -203,16 +221,14 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     :return: True if all pods are in running state, False otherwise
     """
 
-    ns_ignore_list = []
-    if configuration is not None and "ns-ignore-list" in configuration.keys():
-        ns_ignore_list = configuration["ns-ignore-list"]
+    ns_ignore_list = get_value_from_configuration(configuration, "ns-ignore-list")
+    if ns_ignore_list is None:
+        ns_ignore_list = []
 
     taint_ignore_list = []
-    if configuration is not None \
-       and "taints-ignore-list" in configuration.keys():
-        taint_ignore_list = load_taint_list_from_dict(
-            configuration["taints-ignore-list"]
-        )
+    taints = get_value_from_configuration(configuration, "taints-ignore-list")
+    if taints is not None:
+        taint_ignore_list = load_taint_list_from_dict(taints)
 
     nodes, kubeclient = get_active_nodes(None, taint_ignore_list, secrets)
 
@@ -223,8 +239,7 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     pods = v1.list_pod_for_all_namespaces(watch=False)
     retval = True
     for i in pods.items:
-        if i.spec.node_name in active_nodes:
-            if i.status.container_statuses is not None:
+        if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
                 for status in i.status.container_statuses:
                     if status.state.running is None:
                         if i.metadata.namespace not in ns_ignore_list:
@@ -241,6 +256,24 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
                                 i.metadata.namespace,
                                 i.metadata.name,
                                 i.status.container_statuses[0].state))
+    return retval
+
+
+def nodes_super_healthy(label_selector: str = "",ns :str="",configuration: Configuration = None,secrets: Secrets = None)->bool:
+    """
+    Super set of tests for nodes health. all_nodes_are_ok all_pods_in_all_ns_are_ok all_microservices_healthy
+    :param ns: namespace to check microservices in
+    :param configuration: experiment configuration
+    :param secrets: k8s credentials
+    :return: true if all test are ok. False otherwise
+    """
+    retval = True
+    logger.debug("========================Running all pods in all namespaces are ok check")
+
+    retval = all_pods_in_all_ns_are_ok(configuration=configuration, secrets=secrets)
+    if retval:
+        logger.debug("========================Running all nodes are ok check")
+        retval = all_nodes_are_ok(label_selector=label_selector,secrets=secrets,configuration=configuration)
     return retval
 
 

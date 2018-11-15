@@ -9,12 +9,14 @@ from chaoslib.exceptions import FailedActivity
 from kubernetes import client as k8sClient
 from common import create_node_object, create_pod_object
 import pytest
+import datetime
 
 from chaosk8s_wix.probes import all_microservices_healthy, \
     microservice_available_and_healthy, microservice_is_not_available, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs, all_pods_in_all_ns_are_ok
-from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nodes
+from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nodes, \
+    have_new_node, check_min_nodes_exist
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -356,3 +358,56 @@ def test_get_non_tainted_nodes_filtered(cl, client, has_conf):
 
     resp,v1 = get_active_nodes(taints_ignore_list=ignore_list)
     assert 2 == len(resp.items)
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+def test_have_new_node(client, has_conf):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    node1 = create_node_object("old_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    node1.spec.taints = [taint]
+    node1.metadata.creation_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=1000)
+
+    node2 = create_node_object("new_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    node2.spec.taints = [taint]
+    node2.metadata.creation_timestamp = datetime.datetime.now() - datetime.timedelta(seconds = 10)
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    resp = have_new_node(k8s_label_selector="some_selector", age_limit=600)
+    assert True == resp
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+def test_check_min_nodes_exist(client, has_conf):
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    node1 = create_node_object("old_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    node1.spec.taints = [taint]
+    node1.metadata.creation_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=1000)
+
+    node2 = create_node_object("new_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
+    node2.spec.taints = [taint]
+    node2.metadata.creation_timestamp = datetime.datetime.now() - datetime.timedelta(seconds = 10)
+
+    response = k8sClient.V1NodeList(items=[node1, node2])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    resp = check_min_nodes_exist(k8s_label_selector="some_selector", min_limit=2)
+    assert True == resp
+
+    resp = check_min_nodes_exist(k8s_label_selector="some_selector", min_limit=5)
+    assert False == resp

@@ -11,9 +11,12 @@ from kubernetes import client, watch
 
 from chaosk8s_wix import create_k8s_api_client
 from chaoslib.exceptions import FailedActivity
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = ["pods_in_phase", "pods_not_in_phase", "read_pod_logs", "count_pods"]
 
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 def read_pod_logs(name: str = None, last: Union[str, None] = None,
                   ns: str = "default", from_previous: bool = False,

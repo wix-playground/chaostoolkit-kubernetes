@@ -11,9 +11,14 @@ from kubernetes.client.rest import ApiException
 import yaml
 from chaosk8s_wix import create_k8s_api_client
 from chaosk8s_wix.slack.client import post_message
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
            "remove_service_endpoint", "kill_microservice_by_label"]
+
+
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 
 def start_microservice(spec_path: str, ns: str = "default",
@@ -113,6 +118,8 @@ def kill_microservice_by_label(ns: str = "default",
         res = v1.delete_namespaced_deployment(
             d.metadata.name, ns, body)
 
+    v1 = client.ExtensionsV1beta1Api(api)
+    ret = v1.list_namespaced_replica_set(ns, label_selector=label_selector)
     logger.debug("Found {d} replica sets labeled '{n}'".format(
         d=len(ret.items), n=label_selector))
 

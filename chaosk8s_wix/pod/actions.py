@@ -6,12 +6,14 @@ from chaoslib.types import Secrets
 from kubernetes import client
 from logzero import logger
 from chaosk8s_wix.slack.client import post_message
-
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 from chaosk8s_wix import create_k8s_api_client
 
 __all__ = ["terminate_pods"]
 
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 def terminate_pods(label_selector: str = None, name_pattern: str = None,
                    all: bool = False, rand: bool = False,
@@ -50,7 +52,7 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
 
     if rand:
         pods = [random.choice(pods)]
-        logger.debug("Picked pod '{p}' to be terminated".format(
+        logger.debug("Picked pod '{p}' (rand) to be terminated".format(
             p=pods[0].metadata.name))
     elif not all:
         pods = [pods[0]]
@@ -59,6 +61,6 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
 
     body = client.V1DeleteOptions()
     for p in pods:
-        post_message("Killing pod " + p.metadata.name)
+        logger.warning("Killing pod " + p.metadata.name)
         res = v1.delete_namespaced_pod(
             p.metadata.name, ns, body)

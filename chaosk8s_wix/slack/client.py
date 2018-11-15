@@ -58,10 +58,10 @@ def post_message(message_text: str = " "):
     :param message_text: Message text to send
     :return: 0 if everything is ok , error code otherwise
     """
-    logger.debug("Slack Client: post_message called " + message_text)
+
     retval = 1
     settings = get_settings()
-    if settings is not None and len(settings.keys()) > 0:
+    if settings is not None and len(settings.keys()) > 0 and "token" in settings.keys():
         retval = 1
         token = settings["token"]
         token = token.strip()
@@ -77,7 +77,7 @@ def post_message(message_text: str = " "):
         )
 
         if result.get("ok", False) is False:
-            logger.error("Slack client call failed", result)
+            print("Sending slack message '{}' failed".format(message_text))
             retval = 1
         else:
             retval = 0

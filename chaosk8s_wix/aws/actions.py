@@ -7,6 +7,7 @@ from chaosk8s_wix.node import get_active_nodes, load_taint_list_from_dict
 from chaosk8s_wix.slack.client import post_message
 from fabric import api
 import os
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = [
             "tag_random_node_aws",
@@ -15,9 +16,12 @@ __all__ = [
             "attach_sq_to_instance_by_tag",
             "remove_tag_from_aws_instances",
             "iptables_block_port",
-            "terminate_instance_by_tag"
+            "terminate_instance_by_tag",
+            "run_shell_command_on_tag"
           ]
 
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 def get_aws_filters_from_configuration(configuration: Configuration = None):
     filters_to_set = []
@@ -207,7 +211,7 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
 
 def iptables_block_port(tag_name: str = "under_chaos_test",
                         port: int = 0,
-                        protocol: str = "tcp",
+                        protocols: [] = None ,
                         configuration: Configuration = None):
     """
     Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
@@ -215,7 +219,7 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     :param tag_name: tag to filter aws instances
     :param port: port to block
     :param configuration: injected by chaostoolkit framework
-    :param protocol: udp/tcp
+    :param protocols: udp/tcp
     :return: result of shh command on host
     """
 
@@ -231,10 +235,52 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     api.env.port = 22
     text_format = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000"
     for instance in response:
-        command_text = text_format.format(protocol, port)
-        api.env.host_string = instance.private_ip_address
-        post_message("Run sudo {} \r\n on {}({})".format(command_text,
-                                                         instance.private_dns_name,
-                                                         instance.private_ip_address))
-        retval = api.sudo(command_text).return_code
+        for protocol in protocols:
+            command_text = text_format.format(protocol, port)
+
+            api.env.host_string = instance.private_ip_address
+            post_message("Run sudo {} \r\n on {}({})".format(command_text,
+                                                             instance.private_dns_name,
+                                                             instance.private_ip_address))
+            retval = api.sudo(command_text).return_code
+    return retval
+
+
+def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
+                        command: str = "",
+                        sudo: bool = False ,
+                        configuration: Configuration = None):
+    """
+        Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
+
+        :param tag_name: tag to filter aws instances
+        :param command: command to execute
+        :param configuration: injected by chaostoolkit framework
+        :param sudo: True to run command in as sudo, False otherwise
+        :return: result of ssh command on host
+        """
+
+    retval = None
+    ec2 = boto3.resource('ec2')
+
+    filters_to_set = get_aws_filters_from_configuration(configuration)
+    filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    response = ec2.instances.filter(Filters=filters_to_set)
+
+    api.env.key = os.getenv("SSH_KEY")
+    api.env.user = os.getenv("SSH_USER")
+    api.env.port = 22
+    for instance in response:
+            command_text = command
+            api.env.host_string = instance.private_ip_address
+            if sudo:
+                post_message("Run sudo {} \r\n on {}({})".format(command_text,
+                                                                 instance.private_dns_name,
+                                                                 instance.private_ip_address))
+                retval = api.sudo(command_text).return_code
+            else:
+                post_message("Run {} \r\n on {}({})".format(command_text,
+                                                                 instance.private_dns_name,
+                                                                 instance.private_ip_address))
+                retval = api.run(command_text).return_code
     return retval

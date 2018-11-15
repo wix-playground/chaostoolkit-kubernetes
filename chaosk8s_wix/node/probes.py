@@ -6,8 +6,14 @@ from kubernetes import client
 from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
 from . import get_active_nodes, load_taint_list_from_dict
+import datetime
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
-__all__ = ["get_nodes", "all_nodes_are_ok"]
+__all__ = ["get_nodes", "all_nodes_are_ok","have_new_node","check_min_nodes_exist"]
+
+
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 
 def get_nodes(label_selector: str = None,
@@ -88,3 +94,45 @@ def all_nodes_are_ok(label_selector: str = None,
             retval = localresult
 
     return retval
+
+
+def have_new_node(k8s_label_selector: str = None,
+                  age_limit: int = 600,
+                  configuration: Configuration = None,
+                  secrets: Secrets = None):
+    """
+    Check that there is at least one new node created at time interval defined by age_limit, that matches k8s_label_selector
+    :param k8s_label_selector: k8s label selector to filter nodes
+    :param age_limit: seconds, time interval to check for new nodes. If node was created at time that was before current time minus age_limit, it will be filtered out
+    :param configuration: chaostoolkit will inject configuration
+    :param secrets: chaostoolkit will inject secrets
+    :return: True if at least one node was created, False otherwise
+    """
+
+    resp, k8s_api_v1 = get_active_nodes(k8s_label_selector, None, secrets)
+    new_nodes = []
+    for node in resp.items:
+        now = datetime.datetime.now(tz=node.metadata.creation_timestamp.tzinfo)
+        begining_of_time = now - datetime.timedelta(seconds=age_limit)
+        if node.metadata.creation_timestamp > begining_of_time:
+            logger.debug("New node found :" + node.metadata.name)
+            new_nodes.append(node)
+    return len(new_nodes) > 0
+
+
+def check_min_nodes_exist(k8s_label_selector: str = None,
+                  min_limit: int = 2,
+                  configuration: Configuration = None,
+                  secrets: Secrets = None):
+    """
+    Check that there are least min_limit new node that matches k8s_label_selector
+    :param k8s_label_selector: k8s label selector to filter nodes
+    :param min_limit: minimum amount of nodes that have matching k8s_label_selector
+    :param configuration: chaostoolkit will inject configuration
+    :param secrets: chaostoolkit will inject secrets
+    :return: True if there are at least min_limit nodes exists, False otherwise
+    """
+
+    resp, k8s_api_v1 = get_active_nodes(k8s_label_selector, None, secrets)
+
+    return len(resp.items) >= min_limit

@@ -3,13 +3,9 @@
 # cluster. While Chaos Engineering is all about disrupting and weaknesses,
 # it is important to take the time to fully appreciate what those actions
 # do and how they do it.
-import json
-import os.path
 import random
-import re
 import time
-from typing import Any, Dict, Union
-
+from typing import Any, Dict
 from chaoslib.exceptions import FailedActivity
 from chaoslib.types import Secrets, Configuration
 from kubernetes import client
@@ -18,13 +14,16 @@ from logzero import logger
 from random import randint
 from . import get_active_nodes, load_taint_list_from_dict
 from chaosk8s_wix.slack.client import post_message
-
 from chaosk8s_wix import create_k8s_api_client
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
+
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
            "uncordon_node", "remove_label_from_node", "taint_nodes_by_label",
            "add_label_to_node", "label_random_node"]
 
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 def delete_nodes(label_selector: str = None, all: bool = False,
                  rand: bool = False, count: int = None,

@@ -620,13 +620,13 @@ def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
         [
             {
                 'GroupId': "i_testsgid",
-            }
+            }pydoc
         ]
     }
     config = create_config_with_taint_ignore()
 
 
-    retval = iptables_block_port(tag_name="under_chaostest", port=53, protocol="tcp",  configuration=config)
+    retval = iptables_block_port(tag_name="under_chaostest", port=53, protocols=["tcp"],  configuration=config)
 
     assert retval is not None
 
