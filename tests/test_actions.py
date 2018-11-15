@@ -620,7 +620,7 @@ def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
         [
             {
                 'GroupId': "i_testsgid",
-            }pydoc
+            }
         ]
     }
     config = create_config_with_taint_ignore()

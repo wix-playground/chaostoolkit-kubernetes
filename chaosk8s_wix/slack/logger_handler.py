@@ -1,5 +1,5 @@
 from logging import StreamHandler
-from chaosk8s_wix.slack.client import  post_message
+from chaosk8s_wix.slack.client import post_message
 import logging
 import logzero
 
@@ -22,5 +22,4 @@ class SlackHanlder(StreamHandler):
     def emit(self, record):
         msg = self.format(record)
         post_message(msg)
-        #print(">>", msg)
-
+        # print(">>", msg)

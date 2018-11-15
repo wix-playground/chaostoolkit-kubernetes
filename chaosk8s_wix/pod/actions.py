@@ -15,6 +15,7 @@ __all__ = ["terminate_pods"]
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
 
+
 def terminate_pods(label_selector: str = None, name_pattern: str = None,
                    all: bool = False, rand: bool = False,
                    ns: str = "default", secrets: Secrets = None):

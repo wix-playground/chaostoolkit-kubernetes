@@ -19,9 +19,10 @@ __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "all_pods_in_all_ns_are_ok", "nodes_super_healthy"]
 
 
-def all_microservices_healthy(ns: str = "default",
-                              secrets: Secrets = None,
-                              configuration: Configuration = None) -> MicroservicesStatus:
+def all_microservices_healthy(
+        ns: str = "default",
+        secrets: Secrets = None,
+        configuration: Configuration = None) -> MicroservicesStatus:
     """
     Check all microservices in the system are running and available.
 
@@ -198,7 +199,7 @@ def deployment_is_not_fully_available(name: str, ns: str = "default",
                 name=name, t=timeout))
 
 
-def get_value_from_configuration(conf: Configuration, field_name:str):
+def get_value_from_configuration(conf: Configuration, field_name: str):
     """
     Extracts value from chaostoolkit Configuration object with check for None
     :param conf: chaostoolkit Configuration object
@@ -221,7 +222,8 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     :return: True if all pods are in running state, False otherwise
     """
 
-    ns_ignore_list = get_value_from_configuration(configuration, "ns-ignore-list")
+    ns_ignore_list = get_value_from_configuration(
+        configuration, "ns-ignore-list")
     if ns_ignore_list is None:
         ns_ignore_list = []
 
@@ -240,26 +242,30 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     retval = True
     for i in pods.items:
         if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
-                for status in i.status.container_statuses:
-                    if status.state.running is None:
-                        if i.metadata.namespace not in ns_ignore_list:
-                            logger.info("%s\t%s\t%s \t%s is not good" % (
-                                i.status.host_ip,
-                                i.metadata.namespace,
-                                i.metadata.name,
-                                i.status.container_statuses[0].state))
-                            retval = False
-                            break
-                        else:
-                            logger.info("%s\t%s\t%s \t%s is IGNORED" % (
-                                i.status.host_ip,
-                                i.metadata.namespace,
-                                i.metadata.name,
-                                i.status.container_statuses[0].state))
+            for status in i.status.container_statuses:
+                if status.state.running is None:
+                    if i.metadata.namespace not in ns_ignore_list:
+                        logger.info("%s\t%s\t%s \t%s is not good" % (
+                            i.status.host_ip,
+                            i.metadata.namespace,
+                            i.metadata.name,
+                            i.status.container_statuses[0].state))
+                        retval = False
+                        break
+                    else:
+                        logger.info("%s\t%s\t%s \t%s is IGNORED" % (
+                            i.status.host_ip,
+                            i.metadata.namespace,
+                            i.metadata.name,
+                            i.status.container_statuses[0].state))
     return retval
 
 
-def nodes_super_healthy(label_selector: str = "",ns :str="",configuration: Configuration = None,secrets: Secrets = None)->bool:
+def nodes_super_healthy(
+        label_selector: str = "",
+        ns: str = "",
+        configuration: Configuration = None,
+        secrets: Secrets = None)->bool:
     """
     Super set of tests for nodes health. all_nodes_are_ok all_pods_in_all_ns_are_ok all_microservices_healthy
     :param ns: namespace to check microservices in
@@ -268,12 +274,17 @@ def nodes_super_healthy(label_selector: str = "",ns :str="",configuration: Confi
     :return: true if all test are ok. False otherwise
     """
     retval = True
-    logger.debug("========================Running all pods in all namespaces are ok check")
+    logger.debug(
+        "========================Running all pods in all namespaces are ok check")
 
-    retval = all_pods_in_all_ns_are_ok(configuration=configuration, secrets=secrets)
+    retval = all_pods_in_all_ns_are_ok(
+        configuration=configuration, secrets=secrets)
     if retval:
         logger.debug("========================Running all nodes are ok check")
-        retval = all_nodes_are_ok(label_selector=label_selector,secrets=secrets,configuration=configuration)
+        retval = all_nodes_are_ok(
+            label_selector=label_selector,
+            secrets=secrets,
+            configuration=configuration)
     return retval
 
 

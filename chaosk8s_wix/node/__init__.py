@@ -4,10 +4,12 @@ from chaosk8s_wix import create_k8s_api_client
 from chaoslib.types import Secrets
 from logzero import logger
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
-__all__ = ["get_active_nodes", "node_should_be_ignored_by_taints", "is_equal_V1Taint", "load_taint_list_from_dict"]
+__all__ = ["get_active_nodes", "node_should_be_ignored_by_taints",
+           "is_equal_V1Taint", "load_taint_list_from_dict"]
 
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
+
 
 def load_taint_list_from_dict(list_of_objects):
     """
@@ -80,7 +82,8 @@ def get_active_nodes(label_selector: str = None, taints_ignore_list=None,
     for node in node_list:
         node_ignored = False
         if node.spec.taints is not None:
-            node_ignored = node_should_be_ignored_by_taints(node.spec.taints, taints_ignore_list)
+            node_ignored = node_should_be_ignored_by_taints(
+                node.spec.taints, taints_ignore_list)
         if not node_ignored:
             retval.items.append(node)
     return retval, v1

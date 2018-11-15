@@ -10,18 +10,19 @@ import os
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = [
-            "tag_random_node_aws",
-            "set_tag_to_aws_instance",
-            "detach_sq_from_instance_by_tag",
-            "attach_sq_to_instance_by_tag",
-            "remove_tag_from_aws_instances",
-            "iptables_block_port",
-            "terminate_instance_by_tag",
-            "run_shell_command_on_tag"
-          ]
+    "tag_random_node_aws",
+    "set_tag_to_aws_instance",
+    "detach_sq_from_instance_by_tag",
+    "attach_sq_to_instance_by_tag",
+    "remove_tag_from_aws_instances",
+    "iptables_block_port",
+    "terminate_instance_by_tag",
+    "run_shell_command_on_tag"
+]
 
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
+
 
 def get_aws_filters_from_configuration(configuration: Configuration = None):
     filters_to_set = []
@@ -35,13 +36,13 @@ def get_sg_id_by_name(name: str = ""):
     if name != "":
         ec2 = boto3.client('ec2')
         security_groups = ec2.describe_security_groups(
-                                Filters=[
-                                    {
-                                        "Name": "group-name",
-                                        "Values": [name]
-                                    }
-                                ]
-                            )
+            Filters=[
+                {
+                    "Name": "group-name",
+                    "Values": [name]
+                }
+            ]
+        )
         for sg in security_groups['SecurityGroups']:
             retval = sg['GroupId']
     return retval
@@ -93,12 +94,15 @@ def tag_random_node_aws(k8s_label_selector: str = None,
     desc = ""
     ignore_list = []
     if configuration is not None:
-        ignore_list = load_taint_list_from_dict(configuration["taints-ignore-list"])
+        ignore_list = load_taint_list_from_dict(
+            configuration["taints-ignore-list"])
 
-    resp, k8s_api_v1 = get_active_nodes(k8s_label_selector, ignore_list, secrets)
+    resp, k8s_api_v1 = get_active_nodes(
+        k8s_label_selector, ignore_list, secrets)
     random_node = random.choice(resp.items)
     if random_node is not None:
-        aws_retval = set_tag_to_aws_instance(random_node.metadata.name, tag_name, filters_to_set)
+        aws_retval = set_tag_to_aws_instance(
+            random_node.metadata.name, tag_name, filters_to_set)
         if aws_retval is None:
             retval = 1
             desc = "Failed to set tag on aws node " + random_node.metadata.name
@@ -107,7 +111,8 @@ def tag_random_node_aws(k8s_label_selector: str = None,
     else:
         retval = 1
         desc = "No node selected"
-    logger.info("label_random_node_aws selected node " + random_node.metadata.name + " with label " + tag_name)
+    logger.info("label_random_node_aws selected node " +
+                random_node.metadata.name + " with label " + tag_name)
     return retval, desc
 
 
@@ -156,7 +161,8 @@ def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
         all_sg_ids = []
         all_sg_ids.append(sg_id)
 
-        post_message('Attach {} to instance {} {}'.format(sg_id, instance.id, instance.private_dns_name))
+        post_message('Attach {} to instance {} {}'.format(
+            sg_id, instance.id, instance.private_dns_name))
         for interface in instance.network_interfaces:
             retval = interface.modify_attribute(Groups=all_sg_ids)
     return retval
@@ -180,7 +186,8 @@ def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
 
     target_sg_id = get_sg_id_by_name(sg_name)
     for instance in response:
-        all_sg_ids = [sg['GroupId'] for sg in instance.security_groups if sg['GroupId'] != target_sg_id]
+        all_sg_ids = [sg['GroupId']
+                      for sg in instance.security_groups if sg['GroupId'] != target_sg_id]
         post_message('Detach {} from instance {} {}'.format(target_sg_id,
                                                             instance.id,
                                                             instance.private_dns_name))
@@ -204,14 +211,15 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     response = ec2.instances.filter(Filters=filters_to_set)
 
     for instance in response:
-        post_message('Terminate instance {} {}'.format(instance.id, instance.private_dns_name))
+        post_message('Terminate instance {} {}'.format(
+            instance.id, instance.private_dns_name))
         retval = instance.terminate()
     return retval
 
 
 def iptables_block_port(tag_name: str = "under_chaos_test",
                         port: int = 0,
-                        protocols: [] = None ,
+                        protocols: [] = None,
                         configuration: Configuration = None):
     """
     Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
@@ -247,9 +255,9 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
 
 
 def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
-                        command: str = "",
-                        sudo: bool = False ,
-                        configuration: Configuration = None):
+                             command: str = "",
+                             sudo: bool = False,
+                             configuration: Configuration = None):
     """
         Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
 
@@ -271,16 +279,16 @@ def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
     api.env.user = os.getenv("SSH_USER")
     api.env.port = 22
     for instance in response:
-            command_text = command
-            api.env.host_string = instance.private_ip_address
-            if sudo:
-                post_message("Run sudo {} \r\n on {}({})".format(command_text,
-                                                                 instance.private_dns_name,
-                                                                 instance.private_ip_address))
-                retval = api.sudo(command_text).return_code
-            else:
-                post_message("Run {} \r\n on {}({})".format(command_text,
-                                                                 instance.private_dns_name,
-                                                                 instance.private_ip_address))
-                retval = api.run(command_text).return_code
+        command_text = command
+        api.env.host_string = instance.private_ip_address
+        if sudo:
+            post_message("Run sudo {} \r\n on {}({})".format(command_text,
+                                                             instance.private_dns_name,
+                                                             instance.private_ip_address))
+            retval = api.sudo(command_text).return_code
+        else:
+            post_message("Run {} \r\n on {}({})".format(command_text,
+                                                        instance.private_dns_name,
+                                                        instance.private_ip_address))
+            retval = api.run(command_text).return_code
     return retval
