@@ -16,7 +16,7 @@ def get_job_url():
     :return: value JOB_URL, if defined, local hostname otherwise
     """
     retval = socket.gethostname()
-    val = os.getenv("JOB_URL")
+    val = os.getenv("BUILD_URL")
     if val is not None:
         retval = val
     return retval

@@ -10,7 +10,6 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 import yaml
 from chaosk8s_wix import create_k8s_api_client
-from chaosk8s_wix.slack.client import post_message
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
@@ -114,7 +113,7 @@ def kill_microservice_by_label(ns: str = "default",
 
     body = client.V1DeleteOptions()
     for d in ret.items:
-        post_message("Delete deployment {}".format(d.metadata.name))
+        logger.debug("Delete deployment {}".format(d.metadata.name))
         res = v1.delete_namespaced_deployment(
             d.metadata.name, ns, body)
 
@@ -126,6 +125,7 @@ def kill_microservice_by_label(ns: str = "default",
     v1 = client.ExtensionsV1beta1Api(api)
     body = client.V1DeleteOptions()
     for r in ret.items:
+        logger.warning("Delete replicaset {}".format(r.metadata.name))
         res = v1.delete_namespaced_replica_set(
             r.metadata.name, ns, body)
 
@@ -137,6 +137,7 @@ def kill_microservice_by_label(ns: str = "default",
 
     body = client.V1DeleteOptions()
     for p in ret.items:
+        logger.warning("Delete pod {}".format(p.metadata.name))
         res = v1.delete_namespaced_pod(
             p.metadata.name, ns, body)
 

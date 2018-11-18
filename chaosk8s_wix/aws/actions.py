@@ -4,7 +4,6 @@ import boto3
 from chaoslib.types import Configuration, Secrets
 from logzero import logger
 from chaosk8s_wix.node import get_active_nodes, load_taint_list_from_dict
-from chaosk8s_wix.slack.client import post_message
 from fabric import api
 import os
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
@@ -161,7 +160,7 @@ def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
         all_sg_ids = []
         all_sg_ids.append(sg_id)
 
-        post_message('Attach {} to instance {} {}'.format(
+        logger.warning('Attach {} to instance {} {}'.format(
             sg_id, instance.id, instance.private_dns_name))
         for interface in instance.network_interfaces:
             retval = interface.modify_attribute(Groups=all_sg_ids)
@@ -188,9 +187,9 @@ def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
     for instance in response:
         all_sg_ids = [sg['GroupId']
                       for sg in instance.security_groups if sg['GroupId'] != target_sg_id]
-        post_message('Detach {} from instance {} {}'.format(target_sg_id,
-                                                            instance.id,
-                                                            instance.private_dns_name))
+        logger.warning('Detach {} from instance {} {}'.format(target_sg_id,
+                                                              instance.id,
+                                                              instance.private_dns_name))
 
         retval = instance.modify_attribute(Groups=all_sg_ids)
     return retval
@@ -211,7 +210,7 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     response = ec2.instances.filter(Filters=filters_to_set)
 
     for instance in response:
-        post_message('Terminate instance {} {}'.format(
+        logger.warning('Terminate instance {} {}'.format(
             instance.id, instance.private_dns_name))
         retval = instance.terminate()
     return retval
@@ -247,9 +246,9 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
             command_text = text_format.format(protocol, port)
 
             api.env.host_string = instance.private_ip_address
-            post_message("Run sudo {} \r\n on {}({})".format(command_text,
-                                                             instance.private_dns_name,
-                                                             instance.private_ip_address))
+            logger.warning("Run sudo {} \r\n on {}({})".format(command_text,
+                                                               instance.private_dns_name,
+                                                               instance.private_ip_address))
             retval = api.sudo(command_text).return_code
     return retval
 
@@ -259,14 +258,14 @@ def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
                              sudo: bool = False,
                              configuration: Configuration = None):
     """
-        Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
+    Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
 
-        :param tag_name: tag to filter aws instances
-        :param command: command to execute
-        :param configuration: injected by chaostoolkit framework
-        :param sudo: True to run command in as sudo, False otherwise
-        :return: result of ssh command on host
-        """
+    :param tag_name: tag to filter aws instances
+    :param command: command to execute
+    :param configuration: injected by chaostoolkit framework
+    :param sudo: True to run command in as sudo, False otherwise
+    :return: result of ssh command on host
+    """
 
     retval = None
     ec2 = boto3.resource('ec2')
@@ -282,13 +281,13 @@ def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
         command_text = command
         api.env.host_string = instance.private_ip_address
         if sudo:
-            post_message("Run sudo {} \r\n on {}({})".format(command_text,
-                                                             instance.private_dns_name,
-                                                             instance.private_ip_address))
+            logger.warning("Run sudo {} \r\n on {}({})".format(command_text,
+                                                               instance.private_dns_name,
+                                                               instance.private_ip_address))
             retval = api.sudo(command_text).return_code
         else:
-            post_message("Run {} \r\n on {}({})".format(command_text,
-                                                        instance.private_dns_name,
-                                                        instance.private_ip_address))
+            logger.warning("Run {} \r\n on {}({})".format(command_text,
+                                                          instance.private_dns_name,
+                                                          instance.private_ip_address))
             retval = api.run(command_text).return_code
     return retval
