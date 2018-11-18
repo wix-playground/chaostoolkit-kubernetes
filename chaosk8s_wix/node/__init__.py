@@ -84,7 +84,6 @@ def get_active_nodes(label_selector: str = None, taints_ignore_list=None,
         if node.spec.taints is not None:
             node_ignored = node_should_be_ignored_by_taints(
                 node.spec.taints, taints_ignore_list)
-            print("Ignore:", node, node_ignored)
         if not node_ignored:
             retval.items.append(node)
     return retval, v1
