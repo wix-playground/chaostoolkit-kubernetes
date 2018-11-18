@@ -102,7 +102,7 @@ def tag_random_node_aws(k8s_label_selector: str = None,
     if len(resp.items) > 0:
         random_node = random.choice(resp.items)
     if random_node is not None:
-        logger.info("label_random_node_aws selected node " +
+        logger.info("tag_random_node_aws selected node " +
                     random_node.metadata.name + " with label " + tag_name)
         aws_retval = set_tag_to_aws_instance(
             random_node.metadata.name, tag_name, filters_to_set)
@@ -210,6 +210,9 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     ec2 = boto3.resource('ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+    filters_to_set.append(
+        {'Name': 'instance-state-name', 'Values': ['running']})
+
     response = ec2.instances.filter(Filters=filters_to_set)
 
     for instance in response:
