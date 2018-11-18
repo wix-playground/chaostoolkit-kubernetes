@@ -3,14 +3,13 @@ from unittest.mock import ANY, MagicMock, patch
 
 from chaoslib.exceptions import FailedActivity
 from kubernetes import client as k8sClient
-from kubernetes import config
 from kubernetes.client.rest import ApiException
 import pytest
 
-from chaosk8s_wix.actions import start_microservice, kill_microservice
+from chaosk8s_wix.actions import start_microservice
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
     uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node
-from chaosk8s_wix.aws.actions import tag_random_node_aws,attach_sq_to_instance_by_tag,detach_sq_from_instance_by_tag,iptables_block_port
+from chaosk8s_wix.aws.actions import tag_random_node_aws,attach_sq_to_instance_by_tag,iptables_block_port
 from common import create_node_object,create_config_with_taint_ignore
 import os
 
@@ -473,15 +472,49 @@ def test_taint_nodes_by_label(cl, client, has_conf):
 
 @patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
-@patch('chaosk8s_wix.node.client', autospec=True)
-def test_tag_random_node_aws(client, has_conf,boto_client):
+@patch('chaosk8s_wix.node.client.CoreV1Api', autospec=True)
+def test_tag_random_node_aws_fail(clientApi, has_conf,boto_client):
     has_conf.return_value = False
     v1 = MagicMock()
 
-    taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
-    taint2 = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", value="spot", time_added=None)
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
 
-    ignore_list = [taint1, taint2]
+    response = k8sClient.V1NodeList(items=[node2])
+    v1.list_node_with_http_info.return_value = response
+    clientApi.return_value = v1
+
+    client = MagicMock()
+
+    boto_client.client.return_value = client
+
+    client.describe_instances.return_value = {'Reservations':
+                                                      [{'Instances': [
+                                                          {'InstanceId': "id_1",
+                                                           'InstanceLifecycle': 'normal',
+                                                           'PrivateDnsName': 'node1'
+                                                           }
+                                                      ]
+                                                  }]
+                                             }
+    config = create_config_with_taint_ignore()
+
+    retval, nodename = tag_random_node_aws(k8s_label_selector="label_selector",
+                                           secrets=None,
+                                           tag_name="test_tag",
+                                           configuration=config)
+
+    assert retval == 1
+
+
+
+@patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client.CoreV1Api', autospec=True)
+def test_tag_random_node_aws(clientApi, has_conf,boto_client):
+    has_conf.return_value = False
+    v1 = MagicMock()
 
     node1 = create_node_object("node1")
 
@@ -491,8 +524,7 @@ def test_tag_random_node_aws(client, has_conf,boto_client):
 
     response = k8sClient.V1NodeList(items=[node1, node2])
     v1.list_node_with_http_info.return_value = response
-    client.CoreV1Api.return_value = v1
-    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+    clientApi.return_value = v1
 
     client = MagicMock()
     boto_client.client.return_value = client
@@ -507,6 +539,7 @@ def test_tag_random_node_aws(client, has_conf,boto_client):
                                                   }]
                                              }
     config = create_config_with_taint_ignore()
+
     retval, nodename = tag_random_node_aws(k8s_label_selector="label_selector",
                                            secrets=None,
                                            tag_name="test_tag",
@@ -566,7 +599,9 @@ def test_attach_sq_to_instance_by_tag(client, has_conf,boto_client):
                                                     ]
     }
     config = create_config_with_taint_ignore()
-    retval = attach_sq_to_instance_by_tag(tag_name="under_chaostest", sg_name="chaos_test_sg",configuration=config)
+    retval = attach_sq_to_instance_by_tag(tag_name="under_chaostest",
+                                          sg_name="chaos_test_sg" ,
+                                          configuration=config)
 
     assert retval is not None
     network_interface.modify_attribute.assert_called_with(Groups=['i_testsgid'])

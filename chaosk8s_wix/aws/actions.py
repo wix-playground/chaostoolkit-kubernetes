@@ -98,8 +98,12 @@ def tag_random_node_aws(k8s_label_selector: str = None,
 
     resp, k8s_api_v1 = get_active_nodes(
         k8s_label_selector, ignore_list, secrets)
-    random_node = random.choice(resp.items)
+    random_node = None
+    if len(resp.items) > 0:
+        random_node = random.choice(resp.items)
     if random_node is not None:
+        logger.info("label_random_node_aws selected node " +
+                    random_node.metadata.name + " with label " + tag_name)
         aws_retval = set_tag_to_aws_instance(
             random_node.metadata.name, tag_name, filters_to_set)
         if aws_retval is None:
@@ -110,8 +114,7 @@ def tag_random_node_aws(k8s_label_selector: str = None,
     else:
         retval = 1
         desc = "No node selected"
-    logger.info("label_random_node_aws selected node " +
-                random_node.metadata.name + " with label " + tag_name)
+
     return retval, desc
 
 
