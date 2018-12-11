@@ -17,6 +17,7 @@ class SlackHanlder(StreamHandler):
             slack_handler.setLevel(logging.WARNING)
             slack_handler.setFormatter(logzero.LogFormatter(color=False))
             logger.addHandler(slack_handler)
+
             loger_initialized = True
 
     def emit(self, record):

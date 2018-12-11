@@ -41,21 +41,24 @@ def all_microservices_healthy(
         ret = v1.list_pod_for_all_namespaces()
     else:
         ret = v1.list_namespaced_pod(namespace=ns)
-
+    total = 0
     for p in ret.items:
         phase = p.status.phase
         if p.metadata.namespace not in ns_ignore_list:
+            total = total + 1
             if phase == "Failed":
                 failed.append(p)
             elif phase != "Running":
                 not_ready.append(p)
 
-    logger.debug("Found {d} failed and {n} not ready pods".format(
-        d=len(failed), n=len(not_ready)))
+    logger.debug("Total pods {t}. Found {d} failed and {n} not ready pods".format(
+        d=len(failed), n=len(not_ready), t=total))
     for srv in failed:
-        logger.debug("Failed service", srv)
+        logger.debug("Failed service %s on %s %s".format(
+            srv.metadata.name, srv.host_ip, srv.status.phase))
     for srv in not_ready:
-        logger.debug("Not ready service", srv)
+        logger.debug("Not ready service %s on %s %s".format(
+            srv.metadata.name, srv.host_ip, srv.status.phase))
 
     # we probably should list them in the message
     if failed or not_ready:

@@ -5,7 +5,7 @@ from kubernetes import client
 
 from logzero import logger
 from chaosk8s_wix import create_k8s_api_client
-from . import get_active_nodes, load_taint_list_from_dict
+from . import get_active_nodes, load_taint_list_from_dict, is_equal_V1Taint
 import datetime
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
@@ -141,3 +141,26 @@ def check_min_nodes_exist(k8s_label_selector: str = None,
     resp, k8s_api_v1 = get_active_nodes(k8s_label_selector, None, secrets)
 
     return len(resp.items) >= min_limit
+
+
+def get_tainted_nodes(key: str = None, value: str = None, effect: str = None,
+                      secrets: Secrets = None):
+    """
+    Get nodes that are tainted with specific taint.
+    :param key: Taint key
+    :param value: Taint value
+    :param effect: Taint effect
+    :param secrets: chaostoolkit will inject secrets
+    :return: array of nodes with specific taint
+    """
+    all_nodes, k8s_api_v1 = get_active_nodes(
+        label_selector="", taints_ignore_list=None, secrets=secrets)
+    taint_to_find = client.V1Taint(
+        effect=effect, key=key, time_added=None, value=value)
+    retval = []
+    for node in all_nodes.items:
+        if node.spec is not None and node.spec.taints is not None:
+            for taint in node.spec.taints:
+                if is_equal_V1Taint(taint, taint_to_find):
+                    retval.append(node)
+    return retval

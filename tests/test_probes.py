@@ -16,7 +16,7 @@ from chaosk8s_wix.probes import all_microservices_healthy, \
     service_endpoint_is_initialized, deployment_is_not_fully_available, \
     read_microservices_logs, all_pods_in_all_ns_are_ok
 from chaosk8s_wix.node.probes import get_active_nodes, all_nodes_are_ok, get_nodes, \
-    have_new_node, check_min_nodes_exist
+    have_new_node, check_min_nodes_exist, get_tainted_nodes
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -411,3 +411,65 @@ def test_check_min_nodes_exist(client, has_conf):
 
     resp = check_min_nodes_exist(k8s_label_selector="some_selector", min_limit=5)
     assert False == resp
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_get_tainted_nodes(cl, client, has_conf):
+    has_conf.return_value = False
+
+    def replace_k8s_taint(effect, key, time_added, value):
+        return k8sClient.V1Taint(effect=effect, key=key, time_added=time_added, value=value)
+
+    v1 = MagicMock()
+
+    node1 = create_node_object("tainted_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="special")
+    node1.spec.taints = [taint]
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    node3 = create_node_object("not_tainted")
+
+    response = k8sClient.V1NodeList(items=[node1, node2,  node3])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+    client.V1Taint.return_value = replace_k8s_taint
+    resp = get_tainted_nodes(key="dedicated",value="special", effect="NoSchedule")
+
+    assert 1 == len(resp)
+    assert resp[0].metadata.name == node1.metadata.name
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_get_tainted_nodes_fails(cl, client, has_conf):
+    has_conf.return_value = False
+
+    def replace_k8s_taint(effect, key, time_added, value):
+        return k8sClient.V1Taint(effect=effect, key=key, time_added=time_added, value=value)
+
+    v1 = MagicMock()
+
+    node1 = create_node_object("tainted_node")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="not_special")
+    node1.spec.taints = [taint]
+
+    node2 = create_node_object("tainted_node_ignore")
+    taint = k8sClient.V1Taint(effect="NoSchedule", key="dedicated", time_added=None, value="spot")
+    node2.spec.taints = [taint]
+
+    node3 = create_node_object("not_tainted")
+
+    response = k8sClient.V1NodeList(items=[node1, node2,  node3])
+    v1.list_node_with_http_info.return_value = response
+    client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+    client.V1Taint.return_value = replace_k8s_taint
+    resp = get_tainted_nodes(key="dedicated",value="special", effect="NoSchedule")
+
+    assert 0 == len(resp)

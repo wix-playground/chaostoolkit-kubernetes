@@ -248,14 +248,15 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     api.env.port = 22
     text_format = "iptables -I PREROUTING  -t nat -p {} --dport {} -j DNAT --to-destination 0.0.0.0:1000"
     for instance in response:
-        for protocol in protocols:
-            command_text = text_format.format(protocol, port)
+        if instance.private_ip_address is not None:
+            for protocol in protocols:
+                command_text = text_format.format(protocol, port)
 
-            api.env.host_string = instance.private_ip_address
-            logger.warning("Run sudo {} \r\n on {}({})".format(command_text,
-                                                               instance.private_dns_name,
-                                                               instance.private_ip_address))
-            retval = api.sudo(command_text).return_code
+                api.env.host_string = instance.private_ip_address
+                logger.warning("Run sudo {} \r\n on {}({})".format(command_text,
+                                                                   instance.private_dns_name,
+                                                                   instance.private_ip_address))
+                retval = api.sudo(command_text).return_code
     return retval
 
 

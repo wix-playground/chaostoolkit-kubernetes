@@ -589,7 +589,7 @@ def test_attach_sq_to_instance_by_tag(client, has_conf,boto_client):
 
 
     client.instances.filter.return_value = [instance]
-    client.instances.ne
+
 
     client.describe_security_groups.return_value = {'SecurityGroups':
                                                     [
