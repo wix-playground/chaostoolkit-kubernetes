@@ -54,10 +54,10 @@ def all_microservices_healthy(
     logger.debug("Total pods {t}. Found {d} failed and {n} not ready pods".format(
         d=len(failed), n=len(not_ready), t=total))
     for srv in failed:
-        logger.debug("Failed service %s on %s %s".format(
+        logger.debug("Failed service {} on {} {}".format(
             srv.metadata.name, srv.spec.node_name, srv.status.phase))
     for srv in not_ready:
-        logger.debug("Not ready service %s on %s %s".format(
+        logger.debug("Not ready service {} on {} {}".format(
             srv.metadata.name, srv.spec.node_name, srv.status.phase))
 
     # we probably should list them in the message
