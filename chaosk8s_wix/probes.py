@@ -55,10 +55,10 @@ def all_microservices_healthy(
         d=len(failed), n=len(not_ready), t=total))
     for srv in failed:
         logger.debug("Failed service %s on %s %s".format(
-            srv.metadata.name, srv.status.node_name, srv.status.phase))
+            srv.metadata.name, srv.spec.node_name, srv.status.phase))
     for srv in not_ready:
         logger.debug("Not ready service %s on %s %s".format(
-            srv.metadata.name, srv.status.node_name, srv.status.phase))
+            srv.metadata.name, srv.spec.node_name, srv.status.phase))
 
     # we probably should list them in the message
     if failed or not_ready:
