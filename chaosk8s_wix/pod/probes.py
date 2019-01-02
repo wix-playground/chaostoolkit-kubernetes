@@ -13,7 +13,8 @@ from chaosk8s_wix import create_k8s_api_client
 from chaoslib.exceptions import FailedActivity
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
-__all__ = ["pods_in_phase", "pods_not_in_phase", "read_pod_logs", "count_pods"]
+__all__ = ["pods_in_phase", "pods_not_in_phase", "read_pod_logs",
+           "count_pods", "verify_pod_termination_reason"]
 
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
@@ -158,3 +159,28 @@ def count_pods(label_selector: str, phase: str = None,
             count = count + 1
 
     return count
+
+
+def verify_pod_termination_reason(label_selector: str, reason: str = None, secrets: Secrets = None)->bool:
+    """
+    Verifies that pod marked with labels matching label selector are in proper state
+    There is a difference between latest state and last state. Latest state may be CrashLoopBackOff
+    but it wont show you why pod crashed.
+
+    :param label_selector:
+    :param state:
+    :param secrets:
+    :return:
+    """
+    retval = False
+    api = create_k8s_api_client(secrets)
+
+    v1 = client.CoreV1Api(api)
+    ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
+
+    for item in ret.items:
+        for status in item.status.container_statuses:
+            if status.last_state.terminated is not None and status.last_state.terminated.reason == reason:
+                retval = True
+
+    return retval

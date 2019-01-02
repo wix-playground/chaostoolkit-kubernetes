@@ -20,9 +20,12 @@ __version__ = '1.1.1'
 
 
 def has_local_config_file():
-    config_path = os.path.expanduser(
-        os.environ.get('KUBECONFIG', '~/.kube/config'))
-    return os.path.exists(config_path)
+    # due to https://github.com/kubernetes-client/python/issues/525
+    # we disable kube/conf auth
+    return False
+    # config_path = os.path.expanduser(
+    #     os.environ.get('KUBECONFIG', '~/.kube/config'))
+    # return os.path.exists(config_path)
 
 
 def create_k8s_api_client(secrets: Secrets = None) -> client.ApiClient:
@@ -70,11 +73,9 @@ def create_k8s_api_client(secrets: Secrets = None) -> client.ApiClient:
         logger.debug("Using Kubernetes context: {}".format(
             context or "default"))
         return config.new_client_from_config(context=context)
-
     elif env.get("CHAOSTOOLKIT_IN_POD") == "true":
         config.load_incluster_config()
         return client.ApiClient()
-
     else:
         configuration = client.Configuration()
         configuration.debug = True
@@ -126,5 +127,5 @@ def load_exported_activities() -> List[DiscoveredActivities]:
     activities.extend(discover_actions("chaosk8s_wix.node.actions"))
     activities.extend(discover_probes("chaosk8s_wix.node.probes"))
     activities.extend(discover_actions("chaosk8s_wix.aws.actions"))
-
+    activities.extend(discover_probes("chaosk8s_wix.consul.probes"))
     return activities

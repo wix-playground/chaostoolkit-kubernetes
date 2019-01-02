@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
-import os.path
-from typing import Union
-
+import os
+import random
 from chaoslib.exceptions import FailedActivity
-from chaoslib.types import MicroservicesStatus, Secrets
+from chaoslib.types import MicroservicesStatus, Secrets, Configuration
 from logzero import logger
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -13,7 +12,7 @@ from chaosk8s_wix import create_k8s_api_client
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
-           "remove_service_endpoint", "kill_microservice_by_label"]
+           "remove_service_endpoint", "kill_microservice_by_label", "get_random_namespace"]
 
 
 slack_handler = SlackHanlder()
@@ -168,3 +167,52 @@ def scale_microservice(name: str, replicas: int, ns: str = "default",
         raise FailedActivity(
             "failed to scale '{s}' to {r} replicas: {e}".format(
                 s=name, r=replicas, e=str(e)))
+
+
+def get_random_namespace(configuration: Configuration = None, secrets: Secrets = None):
+    """
+    Get random namespace from cluster.
+    Supports ns-ignore-list value in configuration
+    :param secrets: chaostoolkit will inject this dictionary
+    :param configuration: chaostoolkit will inject this dictionary
+    :return: random namespace
+    """
+    if configuration is not None and "ns-ignore-list" in configuration.keys():
+        ns_ignore_list = configuration["ns-ignore-list"]
+
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+    ret = v1.list_namespace()
+    namespace = None
+
+    clean_ns = [
+        namespace for namespace in ret.items if namespace.metadata.name not in ns_ignore_list]
+
+    if len(clean_ns) > 0:
+        namespace = random.choice(clean_ns)
+    return namespace
+
+
+def deploy_service_in_random_namespace(spec_path: str,
+                                       configuration: Configuration = None,
+                                       secrets: Secrets = None):
+    """
+    Start a microservice described by the deployment config, which must be the
+    path to the JSON or YAML representation of the deployment.
+    """
+    api = create_k8s_api_client(secrets)
+
+    with open(spec_path) as f:
+        p, ext = os.path.splitext(spec_path)
+        if ext == '.json':
+            deployment = json.loads(f.read())
+        elif ext in ['.yml', '.yaml']:
+            deployment = yaml.load(f.read())
+        else:
+            raise FailedActivity(
+                "cannot process {path}".format(path=spec_path))
+
+    v1 = client.AppsV1beta1Api(api)
+    ns = get_random_namespace(configuration=configuration, secrets=secrets)
+    resp = v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
+    return resp

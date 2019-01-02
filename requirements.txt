@@ -6,3 +6,4 @@ pyyaml
 slackclient
 fabric3
 boto3
+python-consul

@@ -8,7 +8,7 @@ from kubernetes import client, config
 import pytest
 
 from chaosk8s_wix.pod.actions import terminate_pods
-from chaosk8s_wix.pod.probes import pods_in_phase, pods_not_in_phase
+from chaosk8s_wix.pod.probes import pods_in_phase, pods_not_in_phase,verify_pod_termination_reason
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
@@ -91,3 +91,65 @@ def test_pods_not_in_phase(cl, client, has_conf):
 
     assert pods_not_in_phase(
         label_selector="app=mysvc", phase="Running") is True
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.pod.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_verify_pod_termination_reason_we_have_oom(cl, client, has_conf):
+    has_conf.return_value = False
+    pod = MagicMock()
+    pod.status = MagicMock()
+
+    status = MagicMock()
+    status.last_state = MagicMock()
+    status.last_state.terminated = MagicMock()
+    status.last_state.terminated.reason = 'OOMKilled'
+    pod.status.container_statuses = [status]
+    result = MagicMock()
+    result.items = [pod]
+
+    v1 = MagicMock()
+    v1.list_pod_for_all_namespaces.return_value = result
+    client.CoreV1Api.return_value = v1
+    result = verify_pod_termination_reason("somelabel" , "OOMKilled")
+    assert result is True
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.pod.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_verify_pod_termination_reason_no_pods(cl, client, has_conf):
+    has_conf.return_value = False
+
+    result = MagicMock()
+    result.items = []
+
+    v1 = MagicMock()
+    v1.list_pod_for_all_namespaces.return_value = result
+    client.CoreV1Api.return_value = v1
+    result = verify_pod_termination_reason("somelabel" , "OOMKilled")
+    assert result is False
+
+
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.pod.probes.client', autospec=True)
+@patch('chaosk8s_wix.client')
+def test_verify_pod_termination_reason_we_have_is_healthy(cl, client, has_conf):
+    has_conf.return_value = False
+    pod = MagicMock()
+    pod.status = MagicMock()
+
+    status = MagicMock()
+    status.last_state = MagicMock()
+    status.last_state.terminated = None
+
+    pod.status.container_statuses = [status]
+    result = MagicMock()
+    result.items = [pod]
+
+    v1 = MagicMock()
+    v1.list_pod_for_all_namespaces.return_value = result
+    client.CoreV1Api.return_value = v1
+    result = verify_pod_termination_reason("somelabel" , "OOMKilled")
+    assert result is False
