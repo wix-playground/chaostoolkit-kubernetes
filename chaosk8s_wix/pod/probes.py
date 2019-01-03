@@ -161,26 +161,27 @@ def count_pods(label_selector: str, phase: str = None,
     return count
 
 
-def verify_pod_termination_reason(label_selector: str, reason: str = None, secrets: Secrets = None)->bool:
+def verify_pod_termination_reason(k8s_label_selector: str, reason: str = None, secrets: Secrets = None)->bool:
     """
-    Verifies that pod marked with labels matching label selector are in proper state
-    There is a difference between latest state and last state. Latest state may be CrashLoopBackOff
-    but it wont show you why pod crashed.
+    Verifies that pod marked with labels matching label selector are in proper reason for
+    its current state
 
-    :param label_selector:
-    :param state:
-    :param secrets:
-    :return:
+    :param label_selector: label selector to limit our selection
+    :param reason: Reason for pod state. Usually in our context its omething bad
+    like OOMKilled
+    :param secrets: chaostoolkit will inject this parameter
+    :return: True of pod with specified termination reason was found.False otherwise.
     """
     retval = False
     api = create_k8s_api_client(secrets)
 
     v1 = client.CoreV1Api(api)
-    ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
+    ret = v1.list_pod_for_all_namespaces(label_selector=k8s_label_selector)
 
     for item in ret.items:
         for status in item.status.container_statuses:
             if status.last_state.terminated is not None and status.last_state.terminated.reason == reason:
                 retval = True
+                break
 
     return retval

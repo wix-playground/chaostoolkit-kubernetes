@@ -90,8 +90,7 @@ def kill_microservice(name: str, ns: str = "default",
             p.metadata.name, ns, body)
 
 
-def kill_microservice_by_label(ns: str = "default",
-                               label_selector: str = "name in ({name})",
+def kill_microservice_by_label(label_selector: str = "name in ({name})",
                                secrets: Secrets = None):
     """
     Kill a microservice by `label_selector` in the namespace `ns`.
@@ -105,7 +104,8 @@ def kill_microservice_by_label(ns: str = "default",
     api = create_k8s_api_client(secrets)
 
     v1 = client.AppsV1beta1Api(api)
-    ret = v1.list_namespaced_deployment(ns, label_selector=label_selector)
+
+    ret = v1.list_deployment_for_all_namespaces(label_selector=label_selector)
 
     logger.debug("Found {d} deployments labeled '{n}'".format(
         d=len(ret.items), n=label_selector))
@@ -114,10 +114,10 @@ def kill_microservice_by_label(ns: str = "default",
     for d in ret.items:
         logger.debug("Delete deployment {}".format(d.metadata.name))
         res = v1.delete_namespaced_deployment(
-            d.metadata.name, ns, body)
+            d.metadata.name, d.metadata.namespace, body)
 
     v1 = client.ExtensionsV1beta1Api(api)
-    ret = v1.list_namespaced_replica_set(ns, label_selector=label_selector)
+    ret = v1.list_replica_set_for_all_namespaces(label_selector=label_selector)
     logger.debug("Found {d} replica sets labeled '{n}'".format(
         d=len(ret.items), n=label_selector))
 
@@ -126,10 +126,10 @@ def kill_microservice_by_label(ns: str = "default",
     for r in ret.items:
         logger.warning("Delete replicaset {}".format(r.metadata.name))
         res = v1.delete_namespaced_replica_set(
-            r.metadata.name, ns, body)
+            r.metadata.name, r.metadata.namespace, body)
 
     v1 = client.CoreV1Api(api)
-    ret = v1.list_namespaced_pod(ns, label_selector=label_selector)
+    ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
 
     logger.debug("Found {d} pods labeled '{n}'".format(
         d=len(ret.items), n=label_selector))
@@ -138,7 +138,7 @@ def kill_microservice_by_label(ns: str = "default",
     for p in ret.items:
         logger.warning("Delete pod {}".format(p.metadata.name))
         res = v1.delete_namespaced_pod(
-            p.metadata.name, ns, body)
+            p.metadata.name, p.metadata.namespace, body)
 
 
 def remove_service_endpoint(name: str, ns: str = "default",
@@ -198,7 +198,8 @@ def deploy_service_in_random_namespace(spec_path: str,
                                        secrets: Secrets = None):
     """
     Start a microservice described by the deployment config, which must be the
-    path to the JSON or YAML representation of the deployment.
+    path to the JSON or YAML representation of the deployment.microservice will be
+    started in random namespace.
     """
     api = create_k8s_api_client(secrets)
 
@@ -214,5 +215,7 @@ def deploy_service_in_random_namespace(spec_path: str,
 
     v1 = client.AppsV1beta1Api(api)
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
+    logger.warning(
+        "Deploy memory hungry deployment to {s} namespace".format(ns))
     resp = v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
     return resp
