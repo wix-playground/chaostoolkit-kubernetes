@@ -177,6 +177,7 @@ def get_random_namespace(configuration: Configuration = None, secrets: Secrets =
     :param configuration: chaostoolkit will inject this dictionary
     :return: random namespace
     """
+    ns_ignore_list = []
     if configuration is not None and "ns-ignore-list" in configuration.keys():
         ns_ignore_list = configuration["ns-ignore-list"]
 
@@ -216,6 +217,6 @@ def deploy_service_in_random_namespace(spec_path: str,
     v1 = client.AppsV1beta1Api(api)
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
     logger.warning(
-        "Deploy memory hungry deployment to {s} namespace".format(ns))
+        "Deploy memory hungry deployment to {ns} namespace".format(ns=ns.metadata.name))
     resp = v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
     return resp
