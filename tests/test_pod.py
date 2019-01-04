@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-import io
-from unittest.mock import MagicMock, patch, ANY
-import urllib3
 
-from chaoslib.exceptions import FailedActivity
-from kubernetes import client, config
+from unittest.mock import MagicMock, patch, ANY
+from chaoslib.exceptions import FailedActivity,ActivityFailed
 import pytest
 
 from chaosk8s_wix.pod.actions import terminate_pods
@@ -128,9 +125,9 @@ def test_verify_pod_termination_reason_no_pods(cl, client, has_conf):
     v1 = MagicMock()
     v1.list_pod_for_all_namespaces.return_value = result
     client.CoreV1Api.return_value = v1
-    result = verify_pod_termination_reason("somelabel" , "OOMKilled")
-    assert result is False
-
+    with pytest.raises(FailedActivity):
+        verify_pod_termination_reason("somelabel" , "OOMKilled")
+    
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.pod.probes.client', autospec=True)
@@ -151,5 +148,6 @@ def test_verify_pod_termination_reason_we_have_is_healthy(cl, client, has_conf):
     v1 = MagicMock()
     v1.list_pod_for_all_namespaces.return_value = result
     client.CoreV1Api.return_value = v1
-    result = verify_pod_termination_reason("somelabel" , "OOMKilled")
-    assert result is False
+
+    with pytest.raises(FailedActivity) :
+        verify_pod_termination_reason("somelabel" , "OOMKilled")

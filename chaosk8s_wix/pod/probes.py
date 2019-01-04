@@ -186,6 +186,6 @@ def verify_pod_termination_reason(k8s_label_selector: str, reason: str = None, s
                     retval = True
                     break
     if not retval:
-        raise FailedActivity  ("No pods with proper termination reason found ({} {})".format(
+        raise FailedActivity("No pods with proper termination reason found ({} {})".format(
             k8s_label_selector, reason))
     return retval
