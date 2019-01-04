@@ -218,5 +218,4 @@ def deploy_service_in_random_namespace(spec_path: str,
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
     logger.warning(
         "Deploy memory hungry deployment to {ns} namespace".format(ns=ns.metadata.name))
-    resp = v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
-    return resp
+    v1.create_namespaced_deployment(ns.metadata.name, body=deployment)

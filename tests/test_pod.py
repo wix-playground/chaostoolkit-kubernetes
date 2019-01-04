@@ -127,7 +127,7 @@ def test_verify_pod_termination_reason_no_pods(cl, client, has_conf):
     client.CoreV1Api.return_value = v1
     with pytest.raises(FailedActivity):
         verify_pod_termination_reason("somelabel" , "OOMKilled")
-    
+
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.pod.probes.client', autospec=True)
