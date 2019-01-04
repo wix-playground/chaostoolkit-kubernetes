@@ -179,10 +179,13 @@ def verify_pod_termination_reason(k8s_label_selector: str, reason: str = None, s
     ret = v1.list_pod_for_all_namespaces(label_selector=k8s_label_selector)
 
     for item in ret.items:
+
         if item.status is not None and item.status.container_statuses is not None:
             for status in item.status.container_statuses:
                 if status.last_state.terminated is not None and status.last_state.terminated.reason == reason:
                     retval = True
                     break
-
+    if not retval:
+        raise FailedActivity  ("No pods with proper termination reason found ({} {})".format(
+            k8s_label_selector, reason))
     return retval
