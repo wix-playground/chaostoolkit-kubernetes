@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Union
 import urllib3
-
+import requests
 from chaoslib.exceptions import FailedActivity
 from chaoslib.types import MicroservicesStatus, Secrets, Configuration
 from logzero import logger
@@ -16,7 +16,7 @@ from chaosk8s_wix.node.probes import all_nodes_are_ok
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok", "nodes_super_healthy"]
+           "all_pods_in_all_ns_are_ok", "nodes_super_healthy", "check_http"]
 
 
 def all_microservices_healthy(
@@ -276,7 +276,6 @@ def nodes_super_healthy(
     :param secrets: k8s credentials
     :return: true if all test are ok. False otherwise
     """
-    retval = True
     logger.debug(
         "========================Running all pods in all namespaces are ok check")
 
@@ -289,6 +288,17 @@ def nodes_super_healthy(
             secrets=secrets,
             configuration=configuration)
     return retval
+
+
+def check_http(url: str, timeout: int = 5)->int:
+    """
+    Perfromts http get for given url.
+    :param url: url to get results
+    :param timeout: timeout to wait for response 5 sec defualt
+    :return: retunrs status_code of request
+    """
+    r = requests.get(url, timeout=timeout)
+    return r.status_code
 
 
 # moved to pod/probes.py

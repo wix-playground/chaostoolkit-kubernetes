@@ -128,4 +128,5 @@ def load_exported_activities() -> List[DiscoveredActivities]:
     activities.extend(discover_probes("chaosk8s_wix.node.probes"))
     activities.extend(discover_actions("chaosk8s_wix.aws.actions"))
     activities.extend(discover_probes("chaosk8s_wix.consul.probes"))
+    activities.extend(discover_probes("chaosk8s_wix.consul.actions"))
     return activities

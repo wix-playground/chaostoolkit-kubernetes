@@ -217,5 +217,5 @@ def deploy_service_in_random_namespace(spec_path: str,
     v1 = client.AppsV1beta1Api(api)
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
     logger.warning(
-        "Deploy memory hungry deployment to {ns} namespace".format(ns=ns.metadata.name))
+        "Deploy test deployment to {ns} namespace".format(ns=ns.metadata.name))
     v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
