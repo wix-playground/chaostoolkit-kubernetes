@@ -11,7 +11,7 @@ __all__ = ["check_no_alert_for_dashboard", "check_service_uppness"]
 def check_no_alert_for_dashboard(panel_id: int,
                                  dashboard_id: int,
                                  configuration: Configuration = None,
-                                 secrets: Secrets = None):
+                                 secrets: Secrets = None) -> bool:
     """
     Check alert for dashboard in grafana
     :param panel_id: panel id in grafana
@@ -47,7 +47,7 @@ def check_no_alert_for_dashboard(panel_id: int,
     return retval
 
 
-def metrics_have_spikes(metrics: [], allowed_results: []):
+def metrics_have_spikes(metrics: [], allowed_results: []) -> bool:
     '''
     Checks that metrics list has only allowed values in results field of metric
     :param metrics: list of metrics to check
@@ -65,7 +65,7 @@ def check_service_uppness(service: str,
                           allowed_results: [],
                           time_interval_seconds: int = 300,
                           configuration: Configuration = None,
-                          secrets: Secrets = None):
+                          secrets: Secrets = None) -> bool:
     """
        Check alert for dashboard in grafana
        :param panel_id: panel id in grafana

@@ -161,7 +161,7 @@ def count_pods(label_selector: str, phase: str = None,
     return count
 
 
-def verify_pod_termination_reason(k8s_label_selector: str, reason: str = None, secrets: Secrets = None)->bool:
+def verify_pod_termination_reason(k8s_label_selector: str, reason: str = None, secrets: Secrets = None) -> bool:
     """
     Verifies that pod marked with labels matching label selector are in proper reason for
     its current state
