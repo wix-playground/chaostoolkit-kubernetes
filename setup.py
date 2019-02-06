@@ -57,7 +57,8 @@ packages = [
     'chaosk8s_wix.pod',
     'chaosk8s_wix.slack',
     'chaosk8s_wix.aws',
-    'chaosk8s_wix.consul'
+    'chaosk8s_wix.consul',
+    'chaosk8s_wix.grafana'
 ]
 
 needs_pytest = set(['pytest', 'test']).intersection(sys.argv)
