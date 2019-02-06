@@ -12,6 +12,7 @@ __all__ = ["check_no_alert_for_dashboard", "check_service_uppness"]
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
 
+
 def check_no_alert_for_dashboard(panel_id: int,
                                  dashboard_id: int,
                                  configuration: Configuration = None,
