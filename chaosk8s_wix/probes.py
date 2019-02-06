@@ -268,7 +268,7 @@ def nodes_super_healthy(
         label_selector: str = "",
         ns: str = "",
         configuration: Configuration = None,
-        secrets: Secrets = None)->bool:
+        secrets: Secrets = None) -> bool:
     """
     Super set of tests for nodes health. all_nodes_are_ok all_pods_in_all_ns_are_ok all_microservices_healthy
     :param ns: namespace to check microservices in
@@ -290,7 +290,7 @@ def nodes_super_healthy(
     return retval
 
 
-def check_http(url: str, timeout: int = 5)->int:
+def check_http(url: str, timeout: int = 5) -> int:
     """
     Perfromts http get for given url.
     :param url: url to get results
