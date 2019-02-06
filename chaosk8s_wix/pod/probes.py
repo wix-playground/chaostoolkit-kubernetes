@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-import json
 from typing import Dict, Union
-import urllib3
-
 from chaoslib.types import Secrets
 import dateparser
 from logzero import logger
-from kubernetes import client, watch
+from kubernetes import client
 
 from chaosk8s_wix import create_k8s_api_client
 from chaoslib.exceptions import FailedActivity

@@ -1,12 +1,16 @@
+# -*- coding: utf-8 -*-
 import requests
 from urllib.parse import urljoin
 from chaoslib.types import Secrets, Configuration
 from logzero import logger
 import os
 import json
+from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 __all__ = ["check_no_alert_for_dashboard", "check_service_uppness"]
 
+slack_handler = SlackHanlder()
+slack_handler.attach(logger)
 
 def check_no_alert_for_dashboard(panel_id: int,
                                  dashboard_id: int,
