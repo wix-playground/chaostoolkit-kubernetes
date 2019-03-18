@@ -92,7 +92,10 @@ def check_service_uppness(service: str,
 
     headers = {"Content-Type": 'application/json',
                "Authorization": "Bearer %s" % grafana_token}
-    tmpl = 'minSeries(root_is_sensu.type_is_app-router.dispatcher_is_*.dc_is_*.app_is_{s}.metric_is_response)'
+    # tmpl = 'minSeries(root_is_sensu.type_is_app-router.dispatcher_is_*.dc_is_*.app_is_{s}.metric_is_response)'
+    tmpl = 'movingMedian(minSeries' \
+           '(root_is_sensu.type_is_app-router.dispatcher_is_*.dc_is_*.app_is_{s}.metric_is_response), \'1min\')'
+
     query = tmpl.format(
         s=service)
     time_interval_string = "-{sec}seconds".format(sec=time_interval_seconds)

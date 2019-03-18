@@ -9,8 +9,8 @@ __all__ = ['damage_quorum']
 def kill_instance(node, seconds_to_be_dead: int = 10):
     address = node['ServiceAddress']
     port = node['ServicePort']
-    logger.warning("Make pod play dead {s} for {t} seconds".format(
-        s=address, t=seconds_to_be_dead))
+    # logger.warning("Make pod play dead {s} for {t} seconds".format(
+    #    s=address, t=seconds_to_be_dead))
     url = "http://{a}:{p}/health/play_dead/{t}".format(
         a=address, p=port, t=seconds_to_be_dead)
     r = requests.put(url)
