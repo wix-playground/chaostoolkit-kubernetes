@@ -64,4 +64,4 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
     for p in pods:
         logger.warning("Killing pod " + p.metadata.name)
         res = v1.delete_namespaced_pod(
-            p.metadata.name, ns, body)
+            name=p.metadata.name, namespace=ns, body=body)
