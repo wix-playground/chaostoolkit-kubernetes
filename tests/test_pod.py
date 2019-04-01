@@ -27,8 +27,8 @@ def test_terminate_pods_by_name_pattern(cl, client, has_conf):
     client.CoreV1Api.return_value = v1
 
     terminate_pods(name_pattern="my-app-[0-9]$")
-    v1.delete_namespaced_pod.assert_called_with(
-        pod.metadata.name, "default", ANY)
+    v1.delete_namespaced_pod.assert_called_with(body=ANY,
+        name=pod.metadata.name, namespace="default")
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
