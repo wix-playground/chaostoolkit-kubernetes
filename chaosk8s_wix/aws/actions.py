@@ -68,6 +68,7 @@ def set_tag_to_aws_instance(k8s_node_name: str = "not_defined",
     for reservation in (response["Reservations"]):
         for instance in reservation["Instances"]:
             if instance['PrivateDnsName'] == k8s_node_name:
+
                 retval = ec2.create_tags(Resources=[instance['InstanceId']],
                                          Tags=[{'Key': tag_name, 'Value': tag_name}])
     return retval
@@ -119,7 +120,7 @@ def tag_random_node_aws(k8s_label_selector: str = None,
 
 
 def remove_tag_from_aws_instances(configuration: Configuration = None,
-                                  tag_name: str = "under_chaostest") -> (int, str):
+                                  tag_name: str = "under_chaos_test") -> (int, str):
     """
     Removes tag if its already exist from aws instance.
     :param tag_name: name of the tag to remove
@@ -127,7 +128,7 @@ def remove_tag_from_aws_instances(configuration: Configuration = None,
     """
     filters_to_set = get_aws_filters_from_configuration(configuration)
 
-    filters_to_set.append({'Name': 'tag:'+tag_name})
+    filters_to_set.append({'Name': 'tag:'+tag_name, 'Values': [tag_name]})
 
     ec2 = boto3.client('ec2')
     retval = None
@@ -135,9 +136,11 @@ def remove_tag_from_aws_instances(configuration: Configuration = None,
     array_of_ids = []
     for reservation in (response["Reservations"]):
         for instance in reservation["Instances"]:
-            array_of_ids.append(instance.id)
-    if len(array_of_ids) > 1:
+            array_of_ids.append(instance.get('InstanceId'))
+    if len(array_of_ids) > 0:
         ec2.delete_tags(Resources=array_of_ids, Tags=[{"Key": tag_name}])
+    else:
+        logger.warning('No aws instances found with tag {}'.format(tag_name))
     return retval
 
 
@@ -207,6 +210,7 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     :return: result of modify_attribute call
     """
     retval = None
+
     ec2 = boto3.resource('ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
