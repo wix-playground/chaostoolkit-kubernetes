@@ -466,13 +466,14 @@ def test_taint_nodes_by_label(cl, client, has_conf):
     label_selector = 'label_default=true, label1=True'
 
     taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps", effect="NoExec")
-    v1.patch_node.assert_called()
+    assert v1.patch_node.call_count == 1
     args = v1.patch_node.call_args[0]
     assert args[0] == fake_node_name
     assert args[1]['spec']['taints'][0].key == "key1"
     assert args[1]['spec']['taints'][0].effect == "NoExec"
     assert args[1]['spec']['taints'][0].value == "Apps"
-
+    # v1.patch_node.assert_any_call(
+    #     fake_node_name, {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'time_added': None, 'value': 'Apps'}]}})
 
 
 @patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
