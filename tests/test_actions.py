@@ -466,7 +466,7 @@ def test_taint_nodes_by_label(cl, client, has_conf):
     label_selector = 'label_default=true, label1=True'
 
     taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps", effect="NoExec")
-    v1.patch_node.assert_called_once()
+    v1.patch_node.assert_called()
     args = v1.patch_node.call_args[0]
     assert args[0] == fake_node_name
     assert args[1]['spec']['taints'][0].key == "key1"

@@ -209,7 +209,7 @@ def deploy_service_in_random_namespace(spec_path: str,
         if ext == '.json':
             deployment = json.loads(f.read())
         elif ext in ['.yml', '.yaml']:
-            deployment = yaml.load(f.read())
+            deployment = yaml.safe_load(f.read())
         else:
             raise FailedActivity(
                 "cannot process {path}".format(path=spec_path))
