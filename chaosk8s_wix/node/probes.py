@@ -85,10 +85,10 @@ def all_nodes_are_ok(label_selector: str = None,
                 p=item.metadata.name))
             localresult = False
 
-        if item.spec.taints and len(item.spec.taints) > 0:
-            logger.debug("{p} Tainted node ' ".format(
-                p=item.metadata.name))
-            localresult = False
+        # if item.spec.taints and len(item.spec.taints) > 0:
+        #     logger.debug("{p} Tainted node ' ".format(
+        #         p=item.metadata.name))
+        #     localresult = False
 
         if not localresult:
             logger.debug("{p} Is not healthy ' ".format(
