@@ -178,8 +178,8 @@ def get_random_namespace(configuration: Configuration = None, secrets: Secrets =
     :return: random namespace
     """
     ns_ignore_list = []
-    if configuration is not None and "ns-ignore-list" in configuration.keys():
-        ns_ignore_list = configuration["ns-ignore-list"]
+    if configuration is not None:
+        ns_ignore_list = configuration.get("ns-ignore-list", [])
 
     api = create_k8s_api_client(secrets)
     v1 = client.CoreV1Api(api)

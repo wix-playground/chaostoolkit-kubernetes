@@ -46,7 +46,7 @@ def all_microservices_healthy(
         phase = p.status.phase
         if p.metadata.namespace not in ns_ignore_list:
             total = total + 1
-            if phase == "Failed":
+            if phase == "Failed" or phase == "Unknown":
                 failed.append(p)
             elif phase != "Running":
                 not_ready.append(p)

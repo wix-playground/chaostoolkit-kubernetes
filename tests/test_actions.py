@@ -8,7 +8,7 @@ import pytest
 
 from chaosk8s_wix.actions import start_microservice ,deploy_service_in_random_namespace
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
-    uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node,generate_patch_for_taint,generate_patch_for_taint_deletion
+    uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node, generate_patch_for_taint
 from chaosk8s_wix.aws.actions import tag_random_node_aws,attach_sq_to_instance_by_tag,iptables_block_port
 from common import create_node_object ,create_config_with_taint_ignore
 import os
@@ -679,7 +679,7 @@ def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_terminate_pods_by_name_pattern(cl, client, has_conf,tmpdir):
+def test_deploy_service_in_random_namespace(cl, client, has_conf,tmpdir):
     has_conf.return_value = False
     ns1 = MagicMock()
     ns1.metadata = MagicMock()
@@ -729,12 +729,4 @@ def test_generate_patch_for_taint_already_exists():
     patch = generate_patch_for_taint(existing_taints, taint_new)
     assert len(patch['spec']['taints']) is 2
 
-def test_generate_patch_for_taint_deletion():
-    taint1 = k8sClient.V1Taint(
-        effect="NoSchedule", key="com.wixpress.somekey", time_added=None, value="ssr")
-    taint2 = k8sClient.V1Taint(
-        effect="noExecute", key="com.wixpress.somekey", time_added=None, value="dbmng")
-    existing_taints = [taint1,taint2]
 
-    patch = generate_patch_for_taint_deletion(existing_taints, taint2)
-    assert len(patch['spec']['taints']) is 1

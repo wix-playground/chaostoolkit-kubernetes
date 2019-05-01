@@ -531,5 +531,5 @@ def label_random_node(label_selector: str = None,
                        " with label: " + label_name)
         k8s_api_v1.patch_node(node.metadata.name, body)
     except ApiException as x:
-        raise FailedActivity("Creating new node failed: {}".format(x.body))
+        raise FailedActivity("label node failed: {}".format(x.body))
     return True

@@ -23,4 +23,5 @@ class SlackHanlder(StreamHandler):
     def emit(self, record):
         msg = self.format(record)
         post_message(msg)
+
         # print(">>", msg)

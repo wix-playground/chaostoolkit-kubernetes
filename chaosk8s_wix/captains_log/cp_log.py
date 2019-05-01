@@ -20,7 +20,7 @@ def publish_to_cp(server_url, message: str):
         "eventOrigin": "chaos",
         "extraFields": {},
         "summary": message,
-        "userEmail": "alexshe@wix.com"
+        "userEmail": "somebody@wix.com"
     }
 
     r = requests.post(url, headers=headers, data=body)
