@@ -6,3 +6,4 @@ pytest-cov
 pytest-sugar
 autopep8
 responses
+pytest-timeout
