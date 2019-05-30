@@ -8,7 +8,7 @@ import pytest
 
 from chaosk8s_wix.actions import start_microservice ,deploy_service_in_random_namespace
 from chaosk8s_wix.node.actions import cordon_node, create_node, delete_nodes, \
-    uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node
+    uncordon_node, drain_nodes, remove_label_from_node, taint_nodes_by_label, add_label_to_node, generate_patch_for_taint
 from chaosk8s_wix.aws.actions import tag_random_node_aws,attach_sq_to_instance_by_tag,iptables_block_port
 from common import create_node_object ,create_config_with_taint_ignore
 import os
@@ -460,14 +460,20 @@ def test_taint_nodes_by_label(cl, client, has_conf):
     v1.list_node_with_http_info.return_value = response
     v1.patch_node.return_value = node
     client.CoreV1Api.return_value = v1
+    client.V1Taint.return_value = k8sClient.V1Taint(key="", value="", effect="")
 
 
     label_selector = 'label_default=true, label1=True'
 
     taint_nodes_by_label(label_selector=label_selector, key="key1", value="Apps", effect="NoExec")
-
-    v1.patch_node.assert_called_with(
-        fake_node_name, {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'value': 'Apps'}]}})
+    assert v1.patch_node.call_count == 1
+    args = v1.patch_node.call_args[0]
+    assert args[0] == fake_node_name
+    assert args[1]['spec']['taints'][0].key == "key1"
+    assert args[1]['spec']['taints'][0].effect == "NoExec"
+    assert args[1]['spec']['taints'][0].value == "Apps"
+    # v1.patch_node.assert_any_call(
+    #     fake_node_name, {'spec': {'taints': [{'effect': 'NoExec', 'key': 'key1', 'time_added': None, 'value': 'Apps'}]}})
 
 
 @patch('chaosk8s_wix.aws.actions.boto3', autospec=True)
@@ -673,7 +679,7 @@ def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_terminate_pods_by_name_pattern(cl, client, has_conf,tmpdir):
+def test_deploy_service_in_random_namespace(cl, client, has_conf,tmpdir):
     has_conf.return_value = False
     ns1 = MagicMock()
     ns1.metadata = MagicMock()
@@ -697,5 +703,30 @@ def test_terminate_pods_by_name_pattern(cl, client, has_conf,tmpdir):
     v1.create_namespaced_deployment.assert_called_with(
         'namespace1', body='FAKEDATA')
 
+def test_generate_patch_for_taint_added():
+    taint1 = k8sClient.V1Taint(
+        effect="NoSchedule", key="com.wixpress.somekey", time_added=None, value="ssr")
+    taint2 = k8sClient.V1Taint(
+        effect="noExecute", key="com.wixpress.somekey", time_added=None, value="dbmng")
+    existing_taints = [taint1,taint2]
+
+    new_taint = k8sClient.V1Taint(
+        effect="NoSchedule", key="com.wixpress.somekey", time_added=None, value="someother")
+    patch = generate_patch_for_taint(existing_taints, new_taint)
+    assert len(patch['spec']['taints']) is 3
+
+
+def test_generate_patch_for_taint_already_exists():
+    taint1 = k8sClient.V1Taint(
+        effect="NoSchedule", key="com.wixpress.somekey", time_added=None, value="ssr")
+    taint2 = k8sClient.V1Taint(
+        effect="noExecute", key="com.wixpress.somekey", time_added=None, value="dbmng")
+    taint_new = k8sClient.V1Taint(
+        effect="noExecute", key="com.wixpress.somekey", time_added=None, value="dbmng")
+    existing_taints = [taint1,taint2]
+
+
+    patch = generate_patch_for_taint(existing_taints, taint_new)
+    assert len(patch['spec']['taints']) is 2
 
 

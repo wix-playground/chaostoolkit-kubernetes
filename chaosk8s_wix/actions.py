@@ -65,7 +65,7 @@ def kill_microservice(name: str, ns: str = "default",
     body = client.V1DeleteOptions()
     for d in ret.items:
         res = v1.delete_namespaced_deployment(
-            d.metadata.name, ns, body)
+            name=d.metadata.name, namespace=ns, body=body)
 
     v1 = client.ExtensionsV1beta1Api(api)
     ret = v1.list_namespaced_replica_set(ns, label_selector=label_selector)
@@ -76,7 +76,7 @@ def kill_microservice(name: str, ns: str = "default",
     body = client.V1DeleteOptions()
     for r in ret.items:
         res = v1.delete_namespaced_replica_set(
-            r.metadata.name, ns, body)
+            name=r.metadata.name, namespace=ns, body=body)
 
     v1 = client.CoreV1Api(api)
     ret = v1.list_namespaced_pod(ns, label_selector=label_selector)
@@ -87,7 +87,7 @@ def kill_microservice(name: str, ns: str = "default",
     body = client.V1DeleteOptions()
     for p in ret.items:
         res = v1.delete_namespaced_pod(
-            p.metadata.name, ns, body)
+            name=p.metadata.name, namespace=ns, body=body)
 
 
 def kill_microservice_by_label(label_selector: str = "name in ({name})",
@@ -114,7 +114,7 @@ def kill_microservice_by_label(label_selector: str = "name in ({name})",
     for d in ret.items:
         logger.debug("Delete deployment {}".format(d.metadata.name))
         res = v1.delete_namespaced_deployment(
-            d.metadata.name, d.metadata.namespace, body)
+            name=d.metadata.name, namespace=d.metadata.namespace, body=body)
 
     v1 = client.ExtensionsV1beta1Api(api)
     ret = v1.list_replica_set_for_all_namespaces(label_selector=label_selector)
@@ -126,7 +126,7 @@ def kill_microservice_by_label(label_selector: str = "name in ({name})",
     for r in ret.items:
         logger.warning("Delete replicaset {}".format(r.metadata.name))
         res = v1.delete_namespaced_replica_set(
-            r.metadata.name, r.metadata.namespace, body)
+            name=r.metadata.name, namespace=r.metadata.namespace, body=body)
 
     v1 = client.CoreV1Api(api)
     ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
@@ -138,7 +138,7 @@ def kill_microservice_by_label(label_selector: str = "name in ({name})",
     for p in ret.items:
         logger.warning("Delete pod {}".format(p.metadata.name))
         res = v1.delete_namespaced_pod(
-            p.metadata.name, p.metadata.namespace, body)
+            name=p.metadata.name, namespace=p.metadata.namespace, body=body)
 
 
 def remove_service_endpoint(name: str, ns: str = "default",
@@ -178,8 +178,8 @@ def get_random_namespace(configuration: Configuration = None, secrets: Secrets =
     :return: random namespace
     """
     ns_ignore_list = []
-    if configuration is not None and "ns-ignore-list" in configuration.keys():
-        ns_ignore_list = configuration["ns-ignore-list"]
+    if configuration is not None:
+        ns_ignore_list = configuration.get("ns-ignore-list", [])
 
     api = create_k8s_api_client(secrets)
     v1 = client.CoreV1Api(api)
@@ -209,7 +209,7 @@ def deploy_service_in_random_namespace(spec_path: str,
         if ext == '.json':
             deployment = json.loads(f.read())
         elif ext in ['.yml', '.yaml']:
-            deployment = yaml.load(f.read())
+            deployment = yaml.safe_load(f.read())
         else:
             raise FailedActivity(
                 "cannot process {path}".format(path=spec_path))

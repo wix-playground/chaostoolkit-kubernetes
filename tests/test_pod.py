@@ -13,22 +13,36 @@ from chaosk8s_wix.pod.probes import pods_in_phase, pods_not_in_phase,verify_pod_
 @patch('chaosk8s_wix.client')
 def test_terminate_pods_by_name_pattern(cl, client, has_conf):
     has_conf.return_value = False
+    v1 = MagicMock()
+
+    names = ["default"]
+    result = MagicMock(items=[])
+
+    for name in names:
+        ns1 = MagicMock()
+        ns1.metadata = MagicMock()
+        ns1.metadata.name = name
+        result.items.append(ns1)
+
+    v1.list_namespace.return_value = result
+
     pod = MagicMock()
     pod.metadata.name = "my-app-1"
+    pod.metadata.namespace = "fakens"
 
     pod2 = MagicMock()
     pod2.metadata.name = "some-db"
-
+    pod2.metadata.namespace = "fakens"
     result = MagicMock()
     result.items = [pod, pod2]
 
-    v1 = MagicMock()
+
     v1.list_namespaced_pod.return_value = result
     client.CoreV1Api.return_value = v1
 
-    terminate_pods(name_pattern="my-app-[0-9]$")
-    v1.delete_namespaced_pod.assert_called_with(
-        pod.metadata.name, "default", ANY)
+    terminate_pods(name_pattern="my-app-[0-9]$",configuration={})
+    v1.delete_namespaced_pod.assert_called_with(body=ANY,
+        name=pod.metadata.name, namespace="default")
 
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)

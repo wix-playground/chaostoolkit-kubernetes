@@ -12,14 +12,14 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 from logzero import logger
 from random import randint
-from . import get_active_nodes, load_taint_list_from_dict
+from . import get_active_nodes, load_taint_list_from_dict, is_equal_V1Taint
 from chaosk8s_wix import create_k8s_api_client
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
 
 
 __all__ = ["create_node", "delete_nodes", "cordon_node", "drain_nodes",
            "uncordon_node", "remove_label_from_node", "taint_nodes_by_label",
-           "add_label_to_node", "label_random_node"]
+           "add_label_to_node", "label_random_node", "generate_patch_for_taint", "generate_patch_for_taint_deletion"]
 
 slack_handler = SlackHanlder()
 slack_handler.attach(logger)
@@ -419,57 +419,80 @@ def get_node_list(label_selector, secrets):
 
 
 def remove_taint_from_node(label_selector: str = None,
-                           secrets: Secrets = None) -> bool:
+                           key: str = None, value: str = None, effect: str = None,
+                           secrets: Secrets = None,) -> bool:
     """
     remove taint from nodes by label.As rollback
 
     """
-
-    body = {
-        "spec": {
-            "taints": [
-
-            ]
-        }
-    }
+    # To avoid implementation of non default constructor in tests
+    taint_to_remove = client.V1Taint(key="", effect="", value="")
+    taint_to_remove.key = key
+    taint_to_remove.effect = effect
+    taint_to_remove.value = value
 
     items, k8s_pai_v1 = get_node_list(label_selector, secrets)
 
     for node in items:
         try:
             logger.warning("Remove taint from node :" + node.metadata.name)
-            k8s_pai_v1.patch_node(node.metadata.name, body)
+            if node.spec is not None and node.spec is not None and node.spec.taints is not None:
+                existing_taints = node.spec.body.taints
+            patch = generate_patch_for_taint_deletion(
+                existing_taints, taint_to_remove)
+            k8s_pai_v1.patch_node(node.metadata.name, patch)
         except ApiException as x:
             raise FailedActivity("Un tainting node failed: {}".format(x.body))
     return True
+
+
+def generate_patch_for_taint(existing_taints, new_taint):
+    if new_taint not in existing_taints:
+        existing_taints.append(new_taint)
+    retval = {
+        "spec": {
+            "taints": existing_taints
+        }
+    }
+    return retval
+
+
+def generate_patch_for_taint_deletion(existing_taints, taint_to_remove):
+    new_taint_list = []
+    for taint in existing_taints:
+        if not is_equal_V1Taint(taint_to_remove, taint):
+            new_taint_list.append(taint)
+    retval = {
+        "spec": {
+            "taints": new_taint_list
+        }
+    }
+    return retval
 
 
 def taint_nodes_by_label(label_selector: str = None,
                          key: str = None, value: str = None, effect: str = None,
                          secrets: Secrets = None) -> bool:
     """
-    taint nodes by label. It allows gracefull shutdown
+    taint nodes by label.
 
     """
-
-    body = {
-        "spec": {
-            "taints": [
-                {
-                    "effect": effect,
-                    "key": key,
-                    "value": value
-                }
-            ]
-        }
-    }
+    # To avoid implementation of non default constructor in tests
+    new_taint = client.V1Taint(key="", effect="", value="")
+    new_taint.key = key
+    new_taint.effect = effect
+    new_taint.value = value
 
     items, k8s_api_v1 = get_node_list(label_selector, secrets)
 
     for node in items:
         try:
             logger.warning("Taint node :" + node.metadata.name)
-            k8s_api_v1.patch_node(node.metadata.name, body)
+            existing_taints = []
+            if node.spec is not None and node.spec is not None and node.spec.taints is not None:
+                existing_taints = node.spec.body.taints
+            body_patch = generate_patch_for_taint(existing_taints, new_taint)
+            k8s_api_v1.patch_node(node.metadata.name, body_patch)
         except ApiException as x:
             raise FailedActivity("tainting node failed: {}".format(x.body))
     return True
@@ -508,5 +531,5 @@ def label_random_node(label_selector: str = None,
                        " with label: " + label_name)
         k8s_api_v1.patch_node(node.metadata.name, body)
     except ApiException as x:
-        raise FailedActivity("Creating new node failed: {}".format(x.body))
+        raise FailedActivity("label node failed: {}".format(x.body))
     return True
