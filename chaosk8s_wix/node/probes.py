@@ -69,7 +69,7 @@ def all_nodes_are_ok(label_selector: str = None,
     ignore_list = []
     if configuration is not None:
         ignore_list = load_taint_list_from_dict(
-            configuration["taints-ignore-list"])
+            configuration.get("taints-ignore-list", []))
 
     resp, k8s_api_v1 = get_active_nodes(label_selector, ignore_list, secrets)
 

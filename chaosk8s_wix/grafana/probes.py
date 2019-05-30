@@ -13,10 +13,10 @@ slack_handler = SlackHanlder()
 slack_handler.attach(logger)
 
 
-def check_no_alert_for_dashboard(panel_id: int,
-                                 dashboard_id: int,
-                                 configuration: Configuration = None,
-                                 secrets: Secrets = None) -> bool:
+def check_no_alert_for_dashboard(
+        dashboard_id: int,
+        configuration: Configuration = None,
+        secrets: Secrets = None) -> bool:
     """
     Check alert for dashboard in grafana
     :param panel_id: panel id in grafana
@@ -36,8 +36,7 @@ def check_no_alert_for_dashboard(panel_id: int,
 
     headers = {"Authorization": "Bearer %s" % grafana_token}
 
-    parameters = {"panelId": panel_id,
-                  "dashboardId": dashboard_id, "state": "alerting"}
+    parameters = {"dashboardId": dashboard_id, "state": "alerting"}
 
     endpoint = urljoin(grafana_host, "/api/alerts")
 

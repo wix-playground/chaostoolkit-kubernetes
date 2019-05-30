@@ -2,7 +2,7 @@
 import random
 import re
 
-from chaoslib.types import Secrets
+from chaoslib.types import Secrets, Configuration
 from kubernetes import client
 from logzero import logger
 from chaosk8s_wix.slack.client import post_message
@@ -16,9 +16,34 @@ slack_handler = SlackHanlder()
 slack_handler.attach(logger)
 
 
+def get_not_empty_ns(secret: Secrets = None, ns_ignore_list: str = "", label_selector: str = "com.wix.lifecycle=true"):
+    api = create_k8s_api_client(secret)
+
+    v1 = client.CoreV1Api(api)
+    ret = v1.list_namespace()
+
+    good_ns_list = [
+        ns.metadata.name for ns in ret.items if ns.metadata.name not in ns_ignore_list]
+
+    retval = None
+    if len(good_ns_list) > 0:
+        while retval is None:
+            selected_ns = random.choice(good_ns_list)
+            ret_pods = v1.list_namespaced_pod(
+                selected_ns, label_selector=label_selector)
+            if len(ret_pods.items) > 2:
+                retval = selected_ns
+                logger.debug("Found {} non-empty namespace".format(retval))
+                break
+    else:
+        retval = 'default'
+    return retval
+
+
 def terminate_pods(label_selector: str = None, name_pattern: str = None,
                    all: bool = False, rand: bool = False,
-                   ns: str = "default", secrets: Secrets = None):
+                   ns: str = "default", secrets: Secrets = None,
+                   configuration: Configuration = {}):
     """
     Terminate a pod gracefully. Select the appropriate pods by label and/or
     name patterns. Whenever a pattern is provided for the name, all pods
@@ -32,10 +57,17 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
     If `rand` is set to `True`, one random pod will be terminated.
     Otherwise, the first retrieved pod will be terminated.
     """
+
     api = create_k8s_api_client(secrets)
 
     v1 = client.CoreV1Api(api)
-    ret = v1.list_namespaced_pod(ns, label_selector=label_selector)
+
+    ns_to_check = ns
+    if ns == "default":
+        ns_to_check = get_not_empty_ns(secrets, configuration.get(
+            'ns-ignore-list', []), label_selector)
+
+    ret = v1.list_namespaced_pod(ns_to_check, label_selector=label_selector)
 
     logger.debug("Found {d} pods labelled '{s}'".format(
         d=len(ret.items), s=label_selector))
@@ -64,4 +96,4 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
     for p in pods:
         logger.warning("Killing pod " + p.metadata.name)
         res = v1.delete_namespaced_pod(
-            p.metadata.name, ns, body)
+            p.metadata.name, ns_to_check, body)

@@ -26,7 +26,7 @@ def test_check_no_alert_for_dashboard_fails(requests):
     secret_and_confifg = {
     }
 
-    retval = check_no_alert_for_dashboard(panel_id=1, dashboard_id=1,configuration=secret_and_confifg, secrets=secret_and_confifg )
+    retval = check_no_alert_for_dashboard( dashboard_id=1,configuration=secret_and_confifg, secrets=secret_and_confifg )
     assert retval == False
 
 @patch('chaosk8s_wix.grafana.probes.requests')
@@ -39,7 +39,7 @@ def test_check_no_alert_for_dashboard_success(requests):
     secret_and_confifg = {
     }
 
-    retval = check_no_alert_for_dashboard(panel_id=1, dashboard_id=1,configuration=secret_and_confifg, secrets=secret_and_confifg )
+    retval = check_no_alert_for_dashboard( dashboard_id=1,configuration=secret_and_confifg, secrets=secret_and_confifg )
     assert retval
 
 
