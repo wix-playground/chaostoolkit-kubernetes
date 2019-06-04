@@ -34,8 +34,8 @@ def all_microservices_healthy(
     failed = []
     not_in_condition = []
     ns_ignore_list = []
-    if configuration is not None and "ns-ignore-list" in configuration.keys():
-        ns_ignore_list = configuration["ns-ignore-list"]
+    if configuration is not None:
+        ns_ignore_list = configuration.get("ns-ignore-list", [])
     v1 = client.CoreV1Api(api)
     if ns == "":
         ret = v1.list_pod_for_all_namespaces()

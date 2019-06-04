@@ -437,10 +437,10 @@ def remove_taint_from_node(label_selector: str = None,
         try:
             logger.warning("Remove taint from node :" + node.metadata.name)
             if node.spec is not None and node.spec is not None and node.spec.taints is not None:
-                existing_taints = node.spec.body.taints
-            patch = generate_patch_for_taint_deletion(
-                existing_taints, taint_to_remove)
-            k8s_pai_v1.patch_node(node.metadata.name, patch)
+                existing_taints = node.spec.taints
+                patch = generate_patch_for_taint_deletion(
+                    existing_taints, taint_to_remove)
+                k8s_pai_v1.patch_node(node.metadata.name, patch)
         except ApiException as x:
             raise FailedActivity("Un tainting node failed: {}".format(x.body))
     return True
