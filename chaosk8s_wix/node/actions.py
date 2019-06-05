@@ -490,7 +490,7 @@ def taint_nodes_by_label(label_selector: str = None,
             logger.warning("Taint node :" + node.metadata.name)
             existing_taints = []
             if node.spec is not None and node.spec is not None and node.spec.taints is not None:
-                existing_taints = node.spec.body.taints
+                existing_taints = node.spec.taints
             body_patch = generate_patch_for_taint(existing_taints, new_taint)
             k8s_api_v1.patch_node(node.metadata.name, body_patch)
         except ApiException as x:
