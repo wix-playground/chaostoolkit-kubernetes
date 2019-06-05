@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/wix-playground/chaostoolkit-k8s-wix.svg?branch=master)](https://travis-ci.com/wix-playground/chaostoolkit-k8s-wix)
 # This is extended version of Chaos Toolkit Kubernetes Support
 # Created to provide more flexibility with experiments
 
