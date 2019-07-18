@@ -7,7 +7,7 @@ from chaosk8s_wix.node import get_active_nodes, load_taint_list_from_dict
 from fabric import api
 import os
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
-from chaosk8s_wix import create_aws_client
+from chaosk8s_wix import create_aws_client, create_aws_resource
 
 __all__ = [
     "tag_random_node_aws",
@@ -161,7 +161,7 @@ def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
     :return: result of modify_attribute call
     """
     retval = None
-    ec2 = create_aws_client(secrets, 'ec2')
+    ec2 = create_aws_resource(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
@@ -190,7 +190,7 @@ def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
     :return: result of modify_attribute call
     """
     retval = None
-    ec2 = create_aws_client(secrets, 'ec2')
+    ec2 = create_aws_resource(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
     response = ec2.instances.filter(Filters=filters_to_set)
@@ -218,9 +218,14 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     """
     retval = None
 
-    ec2 = create_aws_client(secrets, 'ec2')
+    dc = configuration.get("kube_cluster_tag", "undefined")
+    
+    ec2 = create_aws_resource(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
+
+    filters_to_set.append({'Name': 'tag:KubernetesCluster', 'Values': [dc]})
+
     filters_to_set.append(
         {'Name': 'instance-state-name', 'Values': ['running']})
 
@@ -249,7 +254,7 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     """
 
     retval = None
-    ec2 = create_aws_client(secrets, 'ec2')
+    ec2 = create_aws_resource(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
@@ -288,7 +293,7 @@ def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
     """
 
     retval = None
-    ec2 = create_aws_client(secrets, 'ec2')
+    ec2 = create_aws_resource(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})

@@ -51,7 +51,7 @@ def get_kube_secret_from_production(target_url, token):
     return retval
 
 
-def create_aws_client(secrets, resource):
+def get_aws_credentials(secrets):
     env = os.environ
     secrets = secrets or {}
 
@@ -62,12 +62,29 @@ def create_aws_client(secrets, resource):
     target_url = os.path.join(prod_vault_url, 'aws')
     token = lookup("NASA_TOKEN", "undefined")
     aws_creds = get_kube_secret_from_production(target_url, token)
+    return aws_creds
+
+
+def create_aws_client(secrets, resource):
+    aws_creds = get_aws_credentials(secrets)
     if aws_creds is not None:
         client = boto3.client(resource,
                               aws_access_key_id=aws_creds['aws_access_key_id'],
                               aws_secret_access_key=aws_creds['aws_secret_access_key'])
     else:
         client = boto3.client(resource)
+
+    return client
+
+
+def create_aws_resource(secrets, resource):
+    aws_creds = get_aws_credentials(secrets)
+    if aws_creds is not None:
+        client = boto3.resource(resource,
+                                aws_access_key_id=aws_creds['aws_access_key_id'],
+                                aws_secret_access_key=aws_creds['aws_secret_access_key'])
+    else:
+        client = boto3.resource(resource)
 
     return client
 
