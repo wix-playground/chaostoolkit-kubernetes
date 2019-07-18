@@ -6,6 +6,8 @@ import json
 import os
 import os.path
 from typing import List
+import requests
+from requests.exceptions import HTTPError
 
 from chaoslib.discovery.discover import discover_actions, discover_probes, \
     initialize_discovery_result
@@ -14,8 +16,10 @@ from chaoslib.types import Discovery, DiscoveredActivities, \
     DiscoveredSystemInfo, Secrets
 from kubernetes import client, config
 from logzero import logger
+import boto3
 
-__all__ = ["create_k8s_api_client", "discover", "__version__"]
+__all__ = ["create_k8s_api_client",
+           "create_aws_client", "discover", "__version__"]
 __version__ = '1.3.0'
 
 
@@ -26,6 +30,46 @@ def has_local_config_file():
     # config_path = os.path.expanduser(
     #     os.environ.get('KUBECONFIG', '~/.kube/config'))
     # return os.path.exists(config_path)
+
+
+def get_kube_secret_from_production(target_url, token):
+    headers = {'Authorization': 'Token ' + token,
+               'Content-Type': 'application/json'}
+    retval = None
+    try:
+        response = requests.get(target_url, headers=headers)
+        retval = json.loads(response.content)
+
+        response.raise_for_status()
+
+    except HTTPError as http_err:
+        # print(f'HTTP error occurred: {http_err}')  # Python 3.6
+        pass
+    except Exception as err:
+        # print(f'Other error occurred: {err}')  # Python 3.6
+        pass
+    return retval
+
+
+def create_aws_client(secrets, resource):
+    env = os.environ
+    secrets = secrets or {}
+
+    def lookup(k: str, d: str = None) -> str:
+        return secrets.get(k, env.get(k, d))
+
+    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
+    target_url = os.path.join(prod_vault_url, 'aws')
+    token = lookup("NASA_TOKEN", "undefined")
+    aws_creds = get_kube_secret_from_production(target_url, token)
+    if aws_creds is not None:
+        client = boto3.client(resource,
+                              aws_access_key_id=aws_creds['aws_access_key_id'],
+                              aws_secret_access_key=aws_creds['aws_secret_access_key'])
+    else:
+        client = boto3.client(resource)
+
+    return client
 
 
 def create_k8s_api_client(secrets: Secrets = None) -> client.ApiClient:
@@ -68,7 +112,21 @@ def create_k8s_api_client(secrets: Secrets = None) -> client.ApiClient:
     def lookup(k: str, d: str = None) -> str:
         return secrets.get(k, env.get(k, d))
 
-    if has_local_config_file():
+    dc = lookup("KUBERNETES_CONTEXT", "undefined")
+    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
+    target_url = os.path.join(prod_vault_url, dc)
+    token = lookup("NASA_TOKEN", "undefined")
+    prod_secrets = get_kube_secret_from_production(target_url, token)
+
+    if prod_secrets is not None:
+        configuration = client.Configuration()
+        configuration.debug = False
+        configuration.host = prod_secrets['url']
+        configuration.verify_ssl = False
+#       configuration.cert_file = nasa_secrets['cert']
+        configuration.api_key['authorization'] = prod_secrets['token']
+        configuration.api_key_prefix['authorization'] = "Bearer"
+    elif has_local_config_file():
         context = lookup("KUBERNETES_CONTEXT")
         logger.debug("Using Kubernetes context: {}".format(
             context or "default"))

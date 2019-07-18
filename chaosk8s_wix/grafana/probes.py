@@ -6,6 +6,7 @@ from logzero import logger
 import os
 import json
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
+from chaosk8s_wix import get_kube_secret_from_production
 
 __all__ = ["check_no_alert_for_dashboard", "check_service_uppness"]
 
@@ -32,7 +33,15 @@ def check_no_alert_for_dashboard(
     def lookup(k: str, d: str = None) -> str:
         return secrets.get(k, env.get(k, d))
 
-    grafana_token = lookup("GRAFANA_TOKEN", "")
+    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
+    target_url = os.path.join(prod_vault_url, 'grafana')
+    token = lookup("NASA_TOKEN", "undefined")
+    grafana_creds = get_kube_secret_from_production(target_url, token)
+
+    if grafana_creds is not None:
+        grafana_token = grafana_creds["token"]
+    else:
+        grafana_token = lookup("GRAFANA_TOKEN", "")
 
     headers = {"Authorization": "Bearer %s" % grafana_token}
 

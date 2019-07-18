@@ -16,7 +16,7 @@ from chaosk8s_wix.node.probes import all_nodes_are_ok
 __all__ = ["all_microservices_healthy", "microservice_available_and_healthy",
            "microservice_is_not_available", "service_endpoint_is_initialized",
            "deployment_is_not_fully_available", "read_microservices_logs",
-           "all_pods_in_all_ns_are_ok", "nodes_super_healthy", "check_http"]
+           "all_pods_in_all_ns_are_ok", "nodes_super_healthy", "check_http", "all_microservices_healthy_multi_ns"]
 
 
 def all_microservices_healthy(
@@ -65,6 +65,25 @@ def all_microservices_healthy(
         raise FailedActivity("the system is unhealthy")
 
     return True
+
+
+def all_microservices_healthy_multi_ns(
+        ns_list: [] = [],
+        secrets: Secrets = None,
+        configuration: Configuration = None) -> MicroservicesStatus:
+    """
+    Check all microservices in the namespaces are running and available.
+
+    Raises :exc:`chaoslib.exceptions.FailedActivity` when the state is not
+    as expected.
+    """
+    res = True
+    for ns in ns_list:
+        logger.debug("Check all services healthy in {} ".format(ns))
+        res = all_microservices_healthy(ns, secrets, configuration)
+        if not res:
+            break
+    return res
 
 
 def microservice_available_and_healthy(
@@ -216,13 +235,61 @@ def get_value_from_configuration(conf: Configuration, field_name: str):
     return retval
 
 
+def all_pods_are_ok_in_multi_ns(ns_list: [], configuration: Configuration = None,
+                                secrets: Secrets = None):
+    """
+
+    :param configuration: experiment configuration
+    :param secrets: k8s credentials
+    :return: True if all pods are in running state, False otherwise. This fucntion ignores nodes with taints from
+    configuration taints-ignore-list list
+    """
+
+    ns_ignore_list = get_value_from_configuration(
+        configuration, "ns-ignore-list")
+    if ns_ignore_list is None:
+        ns_ignore_list = []
+
+    taint_ignore_list = []
+    taints = get_value_from_configuration(configuration, "taints-ignore-list")
+    if taints is not None:
+        taint_ignore_list = load_taint_list_from_dict(taints)
+
+    nodes, kubeclient = get_active_nodes(None, taint_ignore_list, secrets)
+
+    active_nodes = [i.metadata.name for i in nodes.items]
+
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+    for ns in ns_list:
+        pods = v1.list_namespaced_pod(namespace=ns, watch=False)
+        retval = True
+        for i in pods.items:
+            if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
+                for status in i.status.container_statuses:
+                    if status.state.running is None:
+                        logger.info("%s\t%s\t%s \t%s is not good" % (
+                            i.status.host_ip,
+                            i.metadata.namespace,
+                            i.metadata.name,
+                            i.status.container_statuses[0].state))
+                        retval = False
+                        break
+        # if one fails all shall fall
+        if not retval:
+            break
+
+    return retval
+
+
 def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
                               secrets: Secrets = None):
     """
 
     :param configuration: experiment configuration
     :param secrets: k8s credentials
-    :return: True if all pods are in running state, False otherwise
+    :return: True if all pods are in running state, False otherwise. This fucntion ignores nodes with taints from
+    configuration taints-ignore-list list
     """
 
     ns_ignore_list = get_value_from_configuration(

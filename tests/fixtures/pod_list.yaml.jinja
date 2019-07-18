@@ -1,0 +1,52 @@
+{% for ndx in range(1,50) %}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+  labels:
+    branch: libs-releases-GA-local
+    com.wix.lifecycle: "true"
+    service: com.wixpress.example.healthy-nginx-{{ ndx }}
+    consul: "true"
+  namespace: sandbox
+  name: com.wixpress.example.healthy-nginx-{{ ndx }}
+spec:
+  containers:
+  - name: healthy-nginx
+    image: alexshemesh/healthy-nginx:1.0.0
+    imagePullPolicy: IfNotPresent
+    ports:
+    - containerPort: 8080
+      name: http-alt
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 2
+      httpGet:
+        path: /health/is_alive
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      successThreshold: 1
+      timeoutSeconds: 10
+    resources:
+      limits:
+        cpu: "100m"
+        memory: 20Mi
+      requests:
+        cpu: 1m
+        memory: 3Mi
+  nodeSelector:
+    under_chaos_test: "true"
+  dnsPolicy: ClusterFirst
+  tolerations:
+  - key: system.wix.com/dedicated
+    operator: Exists
+  - effect: NoExecute
+    key: wixkey
+    operator: Equal
+    tolerationSeconds: 60
+    value: DrainApps
+
+{% endfor %}

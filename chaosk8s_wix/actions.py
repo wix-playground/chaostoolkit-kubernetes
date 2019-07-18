@@ -10,9 +10,12 @@ from kubernetes.client.rest import ApiException
 import yaml
 from chaosk8s_wix import create_k8s_api_client
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
+from jinja2 import Template
+from collections.abc import Iterable
 
 __all__ = ["start_microservice", "kill_microservice", "scale_microservice",
-           "remove_service_endpoint", "kill_microservice_by_label", "get_random_namespace"]
+           "remove_service_endpoint", "kill_microservice_by_label", "get_random_namespace",
+           "deploy_objects_in_random_namespace", "deploy_objects_in_namespace"]
 
 
 slack_handler = SlackHanlder()
@@ -32,7 +35,7 @@ def start_microservice(spec_path: str, ns: str = "default",
         if ext == '.json':
             deployment = json.loads(f.read())
         elif ext in ['.yml', '.yaml']:
-            deployment = yaml.load(f.read())
+            deployment = yaml.load_all(f.read())
         else:
             raise FailedActivity(
                 "cannot process {path}".format(path=spec_path))
@@ -194,7 +197,84 @@ def get_random_namespace(configuration: Configuration = None, secrets: Secrets =
     return namespace
 
 
-def deploy_service_in_random_namespace(spec_path: str,
+def deploy_single_obj(secrets: Secrets, ns: str, obj):
+    api = create_k8s_api_client(secrets)
+    retval = None
+    api_specific = None
+    apiVersion = obj.get('apiVersion')
+    if apiVersion == 'apps/v1beta1':
+        api_specific = client.AppsV1beta1Api(api)
+    elif apiVersion == 'v1':
+        api_specific = client.CoreV1Api(api)
+    else:
+        logger.warning("Unable to create api client for {}".format(apiVersion))
+    if api_specific is not None:
+        kind = obj.get('kind')
+        if kind == 'Deployment':
+            retval = api_specific.create_namespaced_deployment(ns, body=obj)
+        elif kind == 'Pod':
+            retval = api_specific.create_namespaced_pod(ns, body=obj)
+        else:
+            logger.warning("Unable to create object".format(kind))
+    return retval
+
+
+def deploy_generic_template(secrets: Secrets, ns, template):
+    if isinstance(template, Iterable) and not isinstance(template, dict):
+        for obj in template:
+            deploy_single_obj(secrets, ns, obj)
+    else:
+        deploy_single_obj(secrets, ns, template)
+
+
+def deploy_deployment(secrets, ns, body):
+    api = create_k8s_api_client(secrets)
+    v1 = client.AppsV1beta1Api(api)
+    logger.warning(
+        "Deploy Deployment to {ns} namespace".format(ns=ns))
+    v1.create_namespaced_deployment(ns, body=body)
+
+
+def deploy_pod(secrets, ns, body):
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+    logger.warning(
+        "Deploy Pod to {ns} namespace".format(ns=ns))
+
+    v1.create_namespaced_pod(ns, body=body)
+
+
+def deploy_objects_in_namespace(spec_path: str,
+                                ns: str,
+                                configuration: Configuration = None,
+                                secrets: Secrets = None):
+    """
+    Start a microservice described by the deployment config, which must be the
+    path to the JSON or YAML representation of the deployment.microservice will be
+    started in random namespace.
+    """
+    p, ext = os.path.splitext(spec_path)
+    text = ''
+    if ext == '.jinja':
+        template = Template(open(spec_path).read())
+        text = template.render()
+        p, ext = os.path.splitext(p)
+    else:
+        with open(spec_path) as f:
+            text = f.read()
+
+    if ext == '.json':
+        deployment = json.loads(text)
+    elif ext in ['.yml', '.yaml']:
+        deployment = yaml.load_all(text)
+    else:
+        raise FailedActivity(
+            "cannot process {path}".format(path=spec_path))
+
+    deploy_generic_template(secrets, ns, deployment)
+
+
+def deploy_objects_in_random_namespace(spec_path: str,
                                        configuration: Configuration = None,
                                        secrets: Secrets = None):
     """
@@ -202,20 +282,7 @@ def deploy_service_in_random_namespace(spec_path: str,
     path to the JSON or YAML representation of the deployment.microservice will be
     started in random namespace.
     """
-    api = create_k8s_api_client(secrets)
-
-    with open(spec_path) as f:
-        p, ext = os.path.splitext(spec_path)
-        if ext == '.json':
-            deployment = json.loads(f.read())
-        elif ext in ['.yml', '.yaml']:
-            deployment = yaml.safe_load(f.read())
-        else:
-            raise FailedActivity(
-                "cannot process {path}".format(path=spec_path))
-
-    v1 = client.AppsV1beta1Api(api)
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
-    logger.warning(
-        "Deploy test deployment to {ns} namespace".format(ns=ns.metadata.name))
-    v1.create_namespaced_deployment(ns.metadata.name, body=deployment)
+    print(ns)
+    deploy_objects_in_namespace(
+        spec_path=spec_path, ns=ns.metadata.name, secrets=secrets, configuration=configuration)

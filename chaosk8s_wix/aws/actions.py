@@ -7,6 +7,7 @@ from chaosk8s_wix.node import get_active_nodes, load_taint_list_from_dict
 from fabric import api
 import os
 from chaosk8s_wix.slack.logger_handler import SlackHanlder
+from chaosk8s_wix import create_aws_client
 
 __all__ = [
     "tag_random_node_aws",
@@ -30,10 +31,11 @@ def get_aws_filters_from_configuration(configuration: Configuration = None):
     return filters_to_set
 
 
-def get_sg_id_by_name(name: str = ""):
+def get_sg_id_by_name(name: str = "",
+                      secrets: Secrets = None):
     retval = ""
     if name != "":
-        ec2 = boto3.client('ec2')
+        ec2 = create_aws_client(secrets, 'ec2')
         security_groups = ec2.describe_security_groups(
             Filters=[
                 {
@@ -49,7 +51,8 @@ def get_sg_id_by_name(name: str = ""):
 
 def set_tag_to_aws_instance(k8s_node_name: str = "not_defined",
                             tag_name: str = "under_chaostest",
-                            aws_instance_filter: list = []):
+                            aws_instance_filter: list = [],
+                            secrets: Secrets = None):
     """
     Set tag to aws node. k8s_node_name should be the same as PrivateDnsName parameter in aws
     :param k8s_node_name: k8s node name is the same as PrivateDnsName field in aws
@@ -61,7 +64,7 @@ def set_tag_to_aws_instance(k8s_node_name: str = "not_defined",
     if aws_instance_filter is not None:
         filters_to_set = aws_instance_filter
 
-    ec2 = boto3.client('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
     retval = None
     response = ec2.describe_instances(Filters=filters_to_set)
 
@@ -106,7 +109,7 @@ def tag_random_node_aws(k8s_label_selector: str = None,
         logger.info("tag_random_node_aws selected node " +
                     random_node.metadata.name + " with label " + tag_name)
         aws_retval = set_tag_to_aws_instance(
-            random_node.metadata.name, tag_name, filters_to_set)
+            random_node.metadata.name, tag_name, filters_to_set, secrets=secrets)
         if aws_retval is None:
             retval = 1
             desc = "Failed to set tag on aws node " + random_node.metadata.name
@@ -120,7 +123,8 @@ def tag_random_node_aws(k8s_label_selector: str = None,
 
 
 def remove_tag_from_aws_instances(configuration: Configuration = None,
-                                  tag_name: str = "under_chaos_test") -> (int, str):
+                                  tag_name: str = "under_chaos_test",
+                                  secrets: Secrets = None) -> (int, str):
     """
     Removes tag if its already exist from aws instance.
     :param tag_name: name of the tag to remove
@@ -130,7 +134,7 @@ def remove_tag_from_aws_instances(configuration: Configuration = None,
 
     filters_to_set.append({'Name': 'tag:'+tag_name, 'Values': [tag_name]})
 
-    ec2 = boto3.client('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
     retval = None
     response = ec2.describe_instances(Filters=filters_to_set)
     array_of_ids = []
@@ -146,7 +150,8 @@ def remove_tag_from_aws_instances(configuration: Configuration = None,
 
 def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
                                  sg_name: str = "not_set",
-                                 configuration: Configuration = None):
+                                 configuration: Configuration = None,
+                                 secrets: Secrets = None):
     """
     Attaches security group to all instances with specific tag set.
 
@@ -156,7 +161,7 @@ def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
     :return: result of modify_attribute call
     """
     retval = None
-    ec2 = boto3.resource('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
@@ -175,7 +180,8 @@ def attach_sq_to_instance_by_tag(tag_name: str = "not_set",
 
 def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
                                    sg_name: str = "not_set",
-                                   configuration: Configuration = None):
+                                   configuration: Configuration = None,
+                                   secrets: Secrets = None):
     """
     Detaches security group from instances market with specified tag.
     :param tag_name: tag to filter aws instances
@@ -184,7 +190,7 @@ def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
     :return: result of modify_attribute call
     """
     retval = None
-    ec2 = boto3.resource('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
     response = ec2.instances.filter(Filters=filters_to_set)
@@ -202,7 +208,8 @@ def detach_sq_from_instance_by_tag(tag_name: str = "not_set",
 
 
 def terminate_instance_by_tag(tag_name: str = "not_set",
-                              configuration: Configuration = None):
+                              configuration: Configuration = None,
+                              secrets: Secrets = None):
     """
     Terminates instance marked with specified tag in aws
     :param tag_name: tag to filter aws instances
@@ -211,7 +218,7 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     """
     retval = None
 
-    ec2 = boto3.resource('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
     filters_to_set.append(
@@ -229,7 +236,8 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
 def iptables_block_port(tag_name: str = "under_chaos_test",
                         port: int = 0,
                         protocols: [] = None,
-                        configuration: Configuration = None):
+                        configuration: Configuration = None,
+                        secrets: Secrets = None):
     """
     Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
 
@@ -241,7 +249,7 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
     """
 
     retval = None
-    ec2 = boto3.resource('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
@@ -267,7 +275,8 @@ def iptables_block_port(tag_name: str = "under_chaos_test",
 def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
                              command: str = "",
                              sudo: bool = False,
-                             configuration: Configuration = None):
+                             configuration: Configuration = None,
+                             secrets: Secrets = None):
     """
     Block specific port on aws instance. SSH key should be provided with SHH_KEY env variable. Full text of the key
 
@@ -279,7 +288,7 @@ def run_shell_command_on_tag(tag_name: str = "under_chaos_test",
     """
 
     retval = None
-    ec2 = boto3.resource('ec2')
+    ec2 = create_aws_client(secrets, 'ec2')
 
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
