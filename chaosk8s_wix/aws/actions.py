@@ -218,12 +218,12 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     """
     retval = None
 
-    dc = configuration.get("kube_cluster_tag", "undefined")
     ec2 = create_aws_resource(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
-
-    filters_to_set.append({'Name': 'tag:KubernetesCluster', 'Values': [dc]})
+    dc = configuration.get("KUBERNETES_CONTEXT", "undefined")
+    filters_to_set.append({'Name': 'tag:KubernetesCluster', 'Values': [
+                          "{}.k8s.wixprod.net", format(dc)]})
 
     filters_to_set.append(
         {'Name': 'instance-state-name', 'Values': ['running']})
