@@ -19,7 +19,7 @@ from logzero import logger
 import boto3
 
 __all__ = ["create_k8s_api_client",
-           "create_aws_client", "discover", "__version__"]
+           "create_aws_client", "discover", "__version__", "get_slack_config"]
 __version__ = '1.3.0'
 
 

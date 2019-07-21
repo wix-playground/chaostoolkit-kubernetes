@@ -11,7 +11,9 @@ from chaosk8s_wix.pod.probes import pods_in_phase, pods_not_in_phase,verify_pod_
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.pod.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_terminate_pods_by_name_pattern(cl, client, has_conf):
+@patch('chaosk8s_wix.slack.logger_handler.get_kube_secret_from_production')
+def test_terminate_pods_by_name_pattern(gks, cl, client, has_conf):
+    gks.return_value = {'SLACK_CHANNEL' : 'chaos_fanout' , 'SLACK_TOKEN' : 'sometoken'}
     has_conf.return_value = False
     v1 = MagicMock()
 

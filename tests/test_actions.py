@@ -382,9 +382,10 @@ def test_mirror_pod_cannot_be_drained(cl, client, has_conf):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_remove_label_from_node(cl, client, has_conf):
+@patch('chaosk8s_wix.slack.logger_handler.get_kube_secret_from_production')
+def test_remove_label_from_node(gks,cl, client, has_conf):
     fake_node_name = "fake_node.com"
-
+    gks.return_value = {'url': 'fake_url.com', 'token': 'fake_token_towhatever','SLACK_CHANNEL': 'chaos_fanout', 'SLACK_TOKEN': 'sometoken'}
     has_conf.return_value = False
     v1 = MagicMock()
 
@@ -443,9 +444,11 @@ def test_add_label_to_node(cl, client, has_conf):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.actions.client', autospec=True)
 @patch('chaosk8s_wix.client')
-def test_taint_nodes_by_label(cl, client, has_conf):
+@patch('chaosk8s_wix.slack.logger_handler.get_kube_secret_from_production')
+def test_taint_nodes_by_label(gks,cl, client, has_conf):
     fake_node_name = "fake_node.com"
-
+    gks.return_value = {'url': 'fake_url.com', 'token': 'fake_token_towhatever', 'SLACK_CHANNEL': 'chaos_fanout',
+                        'SLACK_TOKEN': 'sometoken'}
     has_conf.return_value = False
     v1 = MagicMock()
 
@@ -560,8 +563,11 @@ def test_tag_random_node_aws(clientApi, has_conf,boto_client):
 @patch('chaosk8s_wix.boto3', autospec=True)
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.client', autospec=True)
-def test_attach_sq_to_instance_by_tag(client, has_conf,boto_client):
+@patch('chaosk8s_wix.slack.logger_handler.get_kube_secret_from_production')
+def test_attach_sq_to_instance_by_tag(gks,client, has_conf,boto_client):
     has_conf.return_value = False
+    gks.return_value = {'url': 'fake_url.com', 'token': 'fake_token_towhatever', 'SLACK_CHANNEL': 'chaos_fanout',
+                        'SLACK_TOKEN': 'sometoken'}
     v1 = MagicMock()
 
     taint1 = k8sClient.V1Taint(effect="NoSchedule", key="node-role.kubernetes.io/master", value=None, time_added=None)
@@ -617,10 +623,12 @@ def test_attach_sq_to_instance_by_tag(client, has_conf,boto_client):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.client', autospec=True)
 @patch('chaosk8s_wix.aws.actions.api', autospec=True)
-def test_iptables_block_port_no_taint_only(fabric,client, has_conf,boto_client):
+@patch('chaosk8s_wix.slack.logger_handler.get_kube_secret_from_production')
+def test_iptables_block_port_no_taint_only(gks,fabric,client, has_conf,boto_client):
     fabric_api = MagicMock()
     fabric.return_value = fabric_api
-
+    gks.return_value = {'url': 'fake_url.com', 'token': 'fake_token_towhatever', 'SLACK_CHANNEL': 'chaos_fanout',
+                        'SLACK_TOKEN': 'sometoken'}
     os.environ["SSH_KEY"] = "keytext"
     os.environ["SSH_USER"] = "whatever"
 
