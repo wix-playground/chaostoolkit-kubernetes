@@ -16,6 +16,7 @@ slack_handler.attach(logger)
 
 def get_grafana_token(secrets):
     secrets = secrets or {}
+    env = os.environ
 
     def lookup(k: str, d: str = None) -> str:
         return secrets.get(k, env.get(k, d))
