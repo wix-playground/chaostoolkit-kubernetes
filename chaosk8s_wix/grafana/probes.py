@@ -14,6 +14,24 @@ slack_handler = SlackHanlder()
 slack_handler.attach(logger)
 
 
+def get_grafana_token(secrets):
+    secrets = secrets or {}
+
+    def lookup(k: str, d: str = None) -> str:
+        return secrets.get(k, env.get(k, d))
+
+    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
+    target_url = os.path.join(prod_vault_url, 'grafana')
+    token = lookup("NASA_TOKEN", "undefined")
+    grafana_creds = get_kube_secret_from_production(target_url, token)
+    if grafana_creds is not None:
+        grafana_token = grafana_creds["token"]
+    else:
+        grafana_token = lookup("GRAFANA_TOKEN",  "")
+
+    return grafana_token
+
+
 def check_no_alert_for_dashboard(
         dashboard_id: int,
         configuration: Configuration = None,
@@ -24,24 +42,12 @@ def check_no_alert_for_dashboard(
     :param dashboard_id: dashboard id in grafana
     :return: true if no alerts exist for specified dashboard, false otherwise
     """
-    env = os.environ
 
     grafana_host = configuration.get('grafana_host')
 
     secrets = secrets or {}
 
-    def lookup(k: str, d: str = None) -> str:
-        return secrets.get(k, env.get(k, d))
-
-    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
-    target_url = os.path.join(prod_vault_url, 'grafana')
-    token = lookup("NASA_TOKEN", "undefined")
-    grafana_creds = get_kube_secret_from_production(target_url, token)
-
-    if grafana_creds is not None:
-        grafana_token = grafana_creds["token"]
-    else:
-        grafana_token = lookup("GRAFANA_TOKEN", "")
+    grafana_token = get_grafana_token(secrets)
 
     headers = {"Authorization": "Bearer %s" % grafana_token}
 
@@ -86,17 +92,12 @@ def check_service_uppness(service: str,
        :param alowed_results: whitelist of values that can be in dashboard metrics results
        :return: true if no alerts exist for specified dashboard, false otherwise
        """
-    retval = False
-    env = os.environ
 
     grafana_host = configuration.get('grafana_host')
 
     secrets = secrets or {}
 
-    def lookup(k: str, d: str = None) -> str:
-        return secrets.get(k, env.get(k, d))
-
-    grafana_token = lookup("GRAFANA_TOKEN", "")
+    grafana_token = get_grafana_token(secrets)
 
     headers = {"Content-Type": 'application/json',
                "Authorization": "Bearer %s" % grafana_token}

@@ -283,6 +283,6 @@ def deploy_objects_in_random_namespace(spec_path: str,
     started in random namespace.
     """
     ns = get_random_namespace(configuration=configuration, secrets=secrets)
-    print(ns)
+
     deploy_objects_in_namespace(
         spec_path=spec_path, ns=ns.metadata.name, secrets=secrets, configuration=configuration)
