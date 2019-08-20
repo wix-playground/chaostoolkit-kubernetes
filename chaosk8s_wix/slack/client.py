@@ -28,7 +28,6 @@ def post_message(slack_config, message_text: str = " "):
     :param message_text: Message text to send
     :return: 0 if everything is ok , error code otherwise
     """
-    print("post message", slack_config)
     retval = 1
     settings = slack_config
     if settings is not None and len(settings.keys()) > 0 and "token" in settings.keys():

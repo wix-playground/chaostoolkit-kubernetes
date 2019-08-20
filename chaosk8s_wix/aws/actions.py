@@ -221,19 +221,22 @@ def terminate_instance_by_tag(tag_name: str = "not_set",
     ec2 = create_aws_resource(secrets, 'ec2')
     filters_to_set = get_aws_filters_from_configuration(configuration)
     filters_to_set.append({'Name': 'tag:' + tag_name, 'Values': [tag_name]})
-    dc = configuration.get("KUBERNETES_CONTEXT", "undefined")
+    dc = secrets.get("KUBERNETES_CONTEXT", "undefined")
     filters_to_set.append({'Name': 'tag:KubernetesCluster', 'Values': [
-                          "{}.k8s.wixprod.net", format(dc)]})
+                          "{}.k8s.wixprod.net".format(dc)]})
 
     filters_to_set.append(
         {'Name': 'instance-state-name', 'Values': ['running']})
 
     response = ec2.instances.filter(Filters=filters_to_set)
-
-    for instance in response:
+    instances = list(response)
+    if len(instances) > 0:
+        instance = instances[0]
         logger.warning('Terminate instance {} {}'.format(
             instance.id, instance.private_dns_name))
         retval = instance.terminate()
+    else:
+        logger.info("No aws instances found with tag {}".format(tag_name))
     return retval
 
 

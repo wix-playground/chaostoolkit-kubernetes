@@ -130,10 +130,12 @@ def create_k8s_api_client(secrets: Secrets = None) -> client.ApiClient:
         return secrets.get(k, env.get(k, d))
 
     dc = lookup("KUBERNETES_CONTEXT", "undefined")
-    prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
-    target_url = os.path.join(prod_vault_url, dc)
-    token = lookup("NASA_TOKEN", "undefined")
-    prod_secrets = get_kube_secret_from_production(target_url, token)
+    prod_secrets = None
+    if dc is not "undefined":
+        prod_vault_url = lookup("NASA_SECRETS_URL", "undefined")
+        target_url = os.path.join(prod_vault_url, dc)
+        token = lookup("NASA_TOKEN", "undefined")
+        prod_secrets = get_kube_secret_from_production(target_url, token)
 
     if prod_secrets is not None:
         configuration = client.Configuration()

@@ -56,6 +56,8 @@ def test_client_can_provide_a_context(cfg, has_conf):
     has_conf.return_value = True
     cfg.new_client_from_config = MagicMock()
     try:
+        os.environ.pop("NASA_SECRETS_URL", None)
+        os.environ.pop("NASA_TOKEN", None)
         os.environ.update({
             "KUBERNETES_CONTEXT": "minikube"
         })
