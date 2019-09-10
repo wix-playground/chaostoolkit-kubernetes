@@ -310,6 +310,7 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     v1 = client.CoreV1Api(api)
     pods = v1.list_pod_for_all_namespaces(watch=False)
     retval = True
+    ignored_pods = 0
     for i in pods.items:
         if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
             for status in i.status.container_statuses:
@@ -323,11 +324,8 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
                         retval = False
                         break
                     else:
-                        logger.info("%s\t%s\t%s \t%s is IGNORED" % (
-                            i.status.host_ip,
-                            i.metadata.namespace,
-                            i.metadata.name,
-                            i.status.container_statuses[0].state))
+                        ignored_pods = ignored_pods + 1
+    logger.info('{} not healthy pods where ignored by ns_ignore_list'.format(ignored_pods))
     return retval
 
 
