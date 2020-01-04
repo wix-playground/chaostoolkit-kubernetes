@@ -13,7 +13,7 @@ def create_node_object(name: str="default", labels: {}=None)-> k8sClient.V1Node:
     return node
 
 
-def create_pod_object(name: str="default",  imagename: str=None,labels: {}=None, state: str="running", namespace: str="default")-> k8sClient.V1Pod:
+def create_pod_object(name: str="default",  imagename: str=None,labels: {}=None, state: str="running", namespace: str="default" , node_name='node1')-> k8sClient.V1Pod:
     container_state = k8sClient.V1ContainerState(running=MagicMock())
     if state == "terminated":
         container_state = k8sClient.V1ContainerState( terminated=MagicMock())
@@ -24,7 +24,8 @@ def create_pod_object(name: str="default",  imagename: str=None,labels: {}=None,
     condition = k8sClient.V1PodCondition(type="Ready", status=[container_status])
     status = k8sClient.V1PodStatus(conditions=[condition],container_statuses=[container_status])
     container = k8sClient.V1Container(image=image,name="fakename1")
-    spec = k8sClient.V1PodSpec(containers=[container])
+    spec = k8sClient.V1PodSpec(containers=[container],node_name=node_name)
+
     metadata = k8sClient.V1ObjectMeta(name=name, labels=labels, namespace=namespace)
     node = k8sClient.V1Pod(status=status, spec=spec, metadata=metadata)
     return node

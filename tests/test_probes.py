@@ -264,15 +264,15 @@ def test_all_pods_in_all_ns_are_ok(cl, client, has_conf):
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.probes.client', autospec=True)
 @patch('chaosk8s_wix.node.client', autospec=True)
-@patch('chaosk8s_wix.client')
-def test_all_pods_in_all_ns_are_ok_failure(cl,nodes_client, client, has_conf):
+def test_all_pods_in_all_ns_are_ok_failure(nodes_client, client, has_conf):
+    node_name = 'node1'
     has_conf.return_value = False
     v1 = MagicMock()
 
-    pod1 = create_pod_object("fakepod1")
-    pod2 = create_pod_object("fakepod2", state="terminated")
+    pod1 = create_pod_object("fakepod1",node_name=node_name)
+    pod2 = create_pod_object("fakepod2", state='terminated', node_name=node_name)
     pod2.status.container_statuses[0].running = None
-    pod2.spec.node_name = "node1"
+    pod2.spec.node_name = node_name
 
     response = k8sClient.V1PodList(items=[pod1, pod2])
     v1.list_pod_for_all_namespaces.return_value = response
@@ -292,27 +292,61 @@ def test_all_pods_in_all_ns_are_ok_failure(cl,nodes_client, client, has_conf):
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.probes.client', autospec=True)
-@patch('chaosk8s_wix.client')
-def test_all_pods_in_all_ns_are_ok_ignore(cl, client, has_conf):
+@patch('chaosk8s_wix.node.client')
+def test_all_pods_in_all_ns_are_ok_ignore(node_client, client, has_conf):
+    node_name = 'node1'
     has_conf.return_value = False
     v1 = MagicMock()
 
-    pod1 = create_pod_object("fakepod1")
-    pod2 = create_pod_object("fakepod2", state="terminated", namespace="db-catalog")
+    pod1 = create_pod_object("fakepod1", node_name=node_name)
+    pod2 = create_pod_object("fakepod2", state="terminated", namespace="db-catalog", node_name=node_name)
+
+    node = MagicMock()
+    node.metadata.name = node_name
+    v1.list_node_with_http_info.return_value = k8sClient.V1NodeList(items=[node])
 
     response = k8sClient.V1PodList(items=[pod1, pod2])
     v1.list_pod_for_all_namespaces.return_value = response
     client.CoreV1Api.return_value = v1
+    client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    node_client.CoreV1Api.return_value = v1
+    node_client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
 
     resp = all_pods_in_all_ns_are_ok(configuration={"ns-ignore-list": ["db-catalog"]})
     v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
     assert resp is True
 
+@patch('chaosk8s_wix.has_local_config_file', autospec=True)
+@patch('chaosk8s_wix.probes.client', autospec=True)
+@patch('chaosk8s_wix.node.client', autospec=True)
+def test_all_pods_in_all_ns_are_ok_completed( node_client, client, has_conf):
+    node_name = 'node1'
+    has_conf.return_value = False
+    v1 = MagicMock()
+
+    pod1 = create_pod_object("fakepod1",node_name=node_name)
+    pod2 = create_pod_object("fakepod2", state="terminated",node_name=node_name)
+    pod2.status.container_statuses[0].state.terminated.reason = 'Completed'
+
+    node = MagicMock()
+    node.metadata.name = node_name
+    v1.list_node_with_http_info.return_value = k8sClient.V1NodeList(items=[node])
+
+    response = k8sClient.V1PodList(items=[pod1, pod2])
+    v1.list_pod_for_all_namespaces.return_value = response
+    client.CoreV1Api.return_value = v1
+    node_client.CoreV1Api.return_value = v1
+    node_client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
+    resp = all_pods_in_all_ns_are_ok(configuration={"ns-ignore-list": []})
+    v1.list_pod_for_all_namespaces.assert_called_with(watch=False)
+    assert resp is True
 
 @patch('chaosk8s_wix.has_local_config_file', autospec=True)
 @patch('chaosk8s_wix.node.client', autospec=True)
-@patch('chaosk8s_wix.client')
-def test_get_non_tainted_nodes(cl, client, has_conf):
+
+def test_get_non_tainted_nodes(client, has_conf):
     has_conf.return_value = False
     v1 = MagicMock()
 
@@ -325,6 +359,7 @@ def test_get_non_tainted_nodes(cl, client, has_conf):
     v1.list_node_with_http_info.return_value = response
     client.CoreV1Api.return_value = v1
     client.V1NodeList.return_value = k8sClient.V1NodeList(items=[])
+
     resp, v1 = get_active_nodes()
     assert len(resp.items) == 2
 

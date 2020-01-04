@@ -263,18 +263,7 @@ def all_pods_are_ok_in_multi_ns(ns_list: [], configuration: Configuration = None
     v1 = client.CoreV1Api(api)
     for ns in ns_list:
         pods = v1.list_namespaced_pod(namespace=ns, watch=False)
-        retval = True
-        for i in pods.items:
-            if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
-                for status in i.status.container_statuses:
-                    if status.state.running is None:
-                        logger.info("%s\t%s\t%s \t%s is not good" % (
-                            i.status.host_ip,
-                            i.metadata.namespace,
-                            i.metadata.name,
-                            i.status.container_statuses[0].state))
-                        retval = False
-                        break
+        retval = check_pods_statuses(active_nodes, ns_ignore_list, pods)
         # if one fails all shall fall
         if not retval:
             break
@@ -309,12 +298,28 @@ def all_pods_in_all_ns_are_ok(configuration: Configuration = None,
     api = create_k8s_api_client(secrets)
     v1 = client.CoreV1Api(api)
     pods = v1.list_pod_for_all_namespaces(watch=False)
-    retval = True
+
+    retval = check_pods_statuses(active_nodes, ns_ignore_list, pods)
+
+    return retval
+
+
+def check_pods_statuses(active_nodes, ns_ignore_list, pods):
     ignored_pods = 0
+    retval = True
     for i in pods.items:
         if i.spec.node_name in active_nodes and i.status.container_statuses is not None:
             for status in i.status.container_statuses:
-                if status.state.running is None:
+                is_status_running = status.state.running is not None
+                is_status_terminated = status.state.terminated is not None
+                terminated_reason = ''
+                if is_status_terminated:
+                    terminated_reason = status.state.terminated.reason
+                if is_status_terminated and terminated_reason == 'Completed':
+                    # completed docker is ok
+                    pass
+                elif not is_status_running:
+                    # if its not complete and not running its a problem
                     if i.metadata.namespace not in ns_ignore_list:
                         logger.info("%s\t%s\t%s \t%s is not good" % (
                             i.status.host_ip,

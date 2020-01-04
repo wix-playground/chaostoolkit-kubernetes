@@ -95,6 +95,5 @@ def main():
     """Package installation entry point."""
     setuptools.setup(**setup_params)
 
-
 if __name__ == '__main__':
     main()
