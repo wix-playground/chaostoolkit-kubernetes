@@ -107,41 +107,43 @@ def kill_microservice_by_label(label_selector: str = "name in ({name})",
     api = create_k8s_api_client(secrets)
 
     v1 = client.AppsV1beta1Api(api)
+    try:
+        ret = v1.list_deployment_for_all_namespaces(label_selector=label_selector)
+        if ret.items:
+            logger.debug("Found {d} deployments labeled '{n}'".format(
+                d=len(ret.items), n=label_selector))
 
-    ret = v1.list_deployment_for_all_namespaces(label_selector=label_selector)
+            body = client.V1DeleteOptions()
+            for d in ret.items:
+                logger.debug("Delete deployment {}".format(d.metadata.name))
+                res = v1.delete_namespaced_deployment(
+                    name=d.metadata.name, namespace=d.metadata.namespace, body=body)
 
-    logger.debug("Found {d} deployments labeled '{n}'".format(
-        d=len(ret.items), n=label_selector))
+            v1 = client.ExtensionsV1beta1Api(api)
+            ret = v1.list_replica_set_for_all_namespaces(label_selector=label_selector)
+            logger.debug("Found {d} replica sets labeled '{n}'".format(
+                d=len(ret.items), n=label_selector))
 
-    body = client.V1DeleteOptions()
-    for d in ret.items:
-        logger.debug("Delete deployment {}".format(d.metadata.name))
-        res = v1.delete_namespaced_deployment(
-            name=d.metadata.name, namespace=d.metadata.namespace, body=body)
+            v1 = client.ExtensionsV1beta1Api(api)
+            body = client.V1DeleteOptions()
+            for r in ret.items:
+                logger.warning("Delete replicaset {}".format(r.metadata.name))
+                res = v1.delete_namespaced_replica_set(
+                    name=r.metadata.name, namespace=r.metadata.namespace, body=body)
 
-    v1 = client.ExtensionsV1beta1Api(api)
-    ret = v1.list_replica_set_for_all_namespaces(label_selector=label_selector)
-    logger.debug("Found {d} replica sets labeled '{n}'".format(
-        d=len(ret.items), n=label_selector))
+            v1 = client.CoreV1Api(api)
+            ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
 
-    v1 = client.ExtensionsV1beta1Api(api)
-    body = client.V1DeleteOptions()
-    for r in ret.items:
-        logger.warning("Delete replicaset {}".format(r.metadata.name))
-        res = v1.delete_namespaced_replica_set(
-            name=r.metadata.name, namespace=r.metadata.namespace, body=body)
+            logger.debug("Found {d} pods labeled '{n}'".format(
+                d=len(ret.items), n=label_selector))
 
-    v1 = client.CoreV1Api(api)
-    ret = v1.list_pod_for_all_namespaces(label_selector=label_selector)
-
-    logger.debug("Found {d} pods labeled '{n}'".format(
-        d=len(ret.items), n=label_selector))
-
-    body = client.V1DeleteOptions()
-    for p in ret.items:
-        logger.warning("Delete pod {}".format(p.metadata.name))
-        res = v1.delete_namespaced_pod(
-            name=p.metadata.name, namespace=p.metadata.namespace, body=body)
+            body = client.V1DeleteOptions()
+            for p in ret.items:
+                logger.warning("Delete pod {}".format(p.metadata.name))
+                res = v1.delete_namespaced_pod(
+                    name=p.metadata.name, namespace=p.metadata.namespace, body=body)
+    except ApiException as e:
+        pass
 
 
 def remove_service_endpoint(name: str, ns: str = "default",
